@@ -1,0 +1,44 @@
+﻿{
+  "id": "raiden-shogun",
+  "name": "Raiden Shogun",
+  "displayOrder": 2,
+  "version": 1,
+  "source": "Genshin Impact",
+  "category": "Game",
+  "description": "The Electro Archon and ruler of Inazuma, Ei seeks eternity to preserve her nation through a puppet shogun.",
+  "copyright": {
+    "owner": "HoYoverse",
+    "series": "Genshin Impact"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#4B0082",
+    "secondary": "#D8BFD8",
+    "accent": "#FFD700",
+    "surface": "#2E0854",
+    "background": "#1A0033",
+    "text": "#FFFFFF",
+    "card": "#483D8B"
+  },
+  "style": {
+    "personality": ["Serious", "Determined", "Meditative"],
+    "motifs": ["Lightning", "Electro Mitsudomoe", "Cherry blossoms"],
+    "accessories": ["Engulfing Lightning", "Hairpin"],
+    "animation": {
+      "transition": "spring",
+      "background": "blur",
+      "accent": "lightning"
+    },
+    "iconStyle": "Eternal"
+  }
+}

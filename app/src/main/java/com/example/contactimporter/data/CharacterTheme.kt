@@ -1,38 +1,73 @@
 package com.example.contactimporter.data
 
-enum class CharacterCategory { ANIME, GAME }
+import kotlinx.serialization.Serializable
 
-enum class ThemeFamily { SOFT_FANTASY, DARK_ELEGANT, ENERGETIC, FUTURISTIC, MILITARY_SERIOUS, CUSTOM }
-
-enum class AnimationStyle { NONE, SOFT, ELEGANT, PLAYFUL, FUTURISTIC, ENERGETIC, DARK }
-
-enum class CardStyle { FLAT, ROUNDED, GLASS, OUTLINED }
-
-enum class BackgroundEffect { NONE, GRADIENT, PARTICLES, SNOW, RIPPLE, GLOW, HUD, VIGNETTE }
-
-enum class HeroAlignment { LEFT, CENTER, RIGHT }
-
-data class ThemePalette(
-    val primary: Long,
-    val secondary: Long,
-    val background: Long,
-    val surface: Long,
-    val onBackground: Long,
-    val onSurface: Long,
-    val accent: Long,
+@Serializable
+data class AnimationConfig(
+    val transition: String = "fade",
+    val background: String = "none",
+    val accent: String = "none"
 )
 
-data class CharacterTheme(
+@Serializable
+data class CopyrightInfo(
+    val owner: String,
+    val series: String
+)
+
+@Serializable
+data class ImageAssets(
+    val hero: String,
+    val portrait: String,
+    val background: String
+)
+
+@Serializable
+data class AssetAvailability(
+    val hero: Boolean = true,
+    val portrait: Boolean = true,
+    val background: Boolean = true
+)
+
+@Serializable
+data class ThemeStyle(
+    val personality: List<String> = emptyList(),
+    val motifs: List<String> = emptyList(),
+    val accessories: List<String> = emptyList(),
+    val animation: AnimationConfig = AnimationConfig(),
+    val iconStyle: String = "default"
+)
+
+@Serializable
+data class ThemePalette(
+    val primary: String,
+    val secondary: String,
+    val accent: String,
+    val surface: String,
+    val background: String,
+    val text: String = "#FFFFFF",
+    val card: String
+)
+
+@Serializable
+data class CharacterMetadata(
     val id: String,
     val name: String,
-    val franchise: String,
-    val category: CharacterCategory,
-    val themeFamily: ThemeFamily,
-    val portraitAsset: String,
-    val heroAsset: String,
-    val palette: ThemePalette,
-    val animationStyle: AnimationStyle,
-    val cardStyle: CardStyle,
-    val backgroundEffect: BackgroundEffect,
-    val heroAlignment: HeroAlignment = HeroAlignment.CENTER,
+    val displayOrder: Int = 0,
+    val version: Int = 1,
+    val source: String,
+    val category: String = "",
+    val description: String,
+    val copyright: CopyrightInfo,
+    val supportsTheme: Boolean = true,
+    val images: ImageAssets,
+    val assets: AssetAvailability = AssetAvailability(),
+    val theme: ThemePalette,
+    val style: ThemeStyle
 )
+
+// The older enums and classes are being phased out in favor of CharacterMetadata
+// but we keep them for ThemeEngine/UI interpretation logic.
+enum class CardStyle { FLAT, ROUNDED, GLASS, OUTLINED }
+enum class BackgroundStyle { NONE, GRADIENT, RIPPLE, VIGNETTE, GLOW, FOG, SCANLINE }
+enum class AnimationStyle { NONE, SOFT, ENERGETIC }

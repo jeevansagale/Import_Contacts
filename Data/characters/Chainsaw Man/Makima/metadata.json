@@ -1,0 +1,44 @@
+﻿{
+  "id": "makima",
+  "name": "Makima",
+  "displayOrder": 7,
+  "version": 1,
+  "source": "Chainsaw Man",
+  "category": "Anime",
+  "description": "A high-ranking Public Safety Devil Hunter who oversees Denji, later revealed to be the Control Devil.",
+  "copyright": {
+    "owner": "Tatsuki Fujimoto / Shueisha",
+    "series": "Chainsaw Man"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#D32F2F",
+    "secondary": "#F5F5F5",
+    "accent": "#FFEB3B",
+    "surface": "#FFFFFF",
+    "background": "#CFD8DC",
+    "text": "#000000",
+    "card": "#ECEFF1"
+  },
+  "style": {
+    "personality": ["Calculating", "Cunning", "Authoritative"],
+    "motifs": ["Chains", "Circles", "Brain"],
+    "accessories": ["Trench coat", "Black tie"],
+    "animation": {
+      "transition": "fade",
+      "background": "none",
+      "accent": "none"
+    },
+    "iconStyle": "Corporate"
+  }
+}

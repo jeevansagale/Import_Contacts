@@ -1,3 +1,4 @@
 @echo off
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
-call gradlew.bat :app:dependencies > deps_baseline.log
+set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+call gradlew.bat app:assembleRelease
+call gradlew.bat app:assembleDebug

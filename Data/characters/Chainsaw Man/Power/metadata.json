@@ -1,0 +1,44 @@
+﻿{
+  "id": "power",
+  "name": "Power",
+  "displayOrder": 8,
+  "version": 1,
+  "source": "Chainsaw Man",
+  "category": "Anime",
+  "description": "A Public Safety Devil Hunter and the Blood Fiend, known for her boisterous personality and attachment to her cat, Meowy.",
+  "copyright": {
+    "owner": "Tatsuki Fujimoto / Shueisha",
+    "series": "Chainsaw Man"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#F06292",
+    "secondary": "#1E88E5",
+    "accent": "#D32F2F",
+    "surface": "#FFF9C4",
+    "background": "#FFEBEE",
+    "text": "#212121",
+    "card": "#FCE4EC"
+  },
+  "style": {
+    "personality": ["Impulsive", "Narcissistic", "Energetic"],
+    "motifs": ["Horns", "Blood weapons", "Nyako"],
+    "accessories": ["Horns", "Blue jacket"],
+    "animation": {
+      "transition": "spring",
+      "background": "parallax",
+      "accent": "blood"
+    },
+    "iconStyle": "Chaos"
+  }
+}

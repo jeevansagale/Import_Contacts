@@ -1,0 +1,44 @@
+﻿{
+  "id": "historia-reiss",
+  "name": "Historia Reiss",
+  "displayOrder": 11,
+  "version": 1,
+  "source": "Attack on Titan",
+  "category": "Anime",
+  "description": "The true queen of the Walls and a former member of the Scout Regiment, known for her compassion and sense of duty.",
+  "copyright": {
+    "owner": "Hajime Isayama / Kodansha",
+    "series": "Attack on Titan"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#EEDD82",
+    "secondary": "#2E8B57",
+    "accent": "#F5F5DC",
+    "surface": "#FFFFFF",
+    "background": "#F0FFF0",
+    "text": "#000000",
+    "card": "#FFF8DC"
+  },
+  "style": {
+    "personality": ["Kind", "Dutiful", "Compassionate"],
+    "motifs": ["Crown", "Wheat", "Wings of Freedom"],
+    "accessories": ["Crown", "Scout Regiment cloak"],
+    "animation": {
+      "transition": "fade",
+      "background": "blur",
+      "accent": "snow"
+    },
+    "iconStyle": "Royal"
+  }
+}

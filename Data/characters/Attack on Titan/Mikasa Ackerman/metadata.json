@@ -1,0 +1,44 @@
+﻿{
+  "id": "mikasa-ackerman",
+  "name": "Mikasa Ackerman",
+  "displayOrder": 10,
+  "version": 1,
+  "source": "Attack on Titan",
+  "category": "Anime",
+  "description": "A highly skilled soldier and one of the strongest members of the Scout Regiment, fiercely protective of Eren Yeager.",
+  "copyright": {
+    "owner": "Hajime Isayama / Kodansha",
+    "series": "Attack on Titan"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#8B0000",
+    "secondary": "#5D4037",
+    "accent": "#455A64",
+    "surface": "#EEEEEE",
+    "background": "#E0E0E0",
+    "text": "#212121",
+    "card": "#BDBDBD"
+  },
+  "style": {
+    "personality": ["Stoic", "Protective", "Loyal"],
+    "motifs": ["Red scarf", "Wings of Freedom", "Blades"],
+    "accessories": ["Red scarf", "ODM Gear"],
+    "animation": {
+      "transition": "spring",
+      "background": "parallax",
+      "accent": "particles"
+    },
+    "iconStyle": "Soldier"
+  }
+}

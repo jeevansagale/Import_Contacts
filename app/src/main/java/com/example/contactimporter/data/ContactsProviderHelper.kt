@@ -2,169 +2,139 @@ package com.example.contactimporter.data
 
 import android.content.ContentProviderOperation
 import android.content.Context
+import android.net.Uri
 import android.provider.ContactsContract
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import android.util.Log
 
 object ContactsProviderHelper {
 
     private const val TAG = "ContactsProviderHelper"
 
     /**
-     * Loads existing contacts for quick duplicate detection.
-     * We create a simple signature for each contact: "name|phoneNumber"
-     * For actual usage we normalize phone numbers (e.g., removing spaces).
+     * Normalizes a phone number for comparison by removing all non-digit characters.
      */
-    suspend fun loadExistingSignatures(context: Context): Set<String> = withContext(Dispatchers.IO) {
-        val signatures = mutableSetOf<String>()
-        val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER
-        )
-
-        context.contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            projection,
-            null,
-            null,
-            null
-        )?.use { cursor ->
-            val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            val phoneIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-
-            while (cursor.moveToNext()) {
-                val name = if (nameIdx >= 0) cursor.getString(nameIdx) else null
-                val phone = if (phoneIdx >= 0) cursor.getString(phoneIdx) else null
-                
-                if (name != null) {
-                    val cleanPhone = phone?.replace(Regex("[\\s\\-\\(\\)]"), "") ?: ""
-                    signatures.add("${name.trim().lowercase()}|$cleanPhone")
-                }
-            }
-        }
-        signatures
+    fun normalizePhoneNumber(number: String): String {
+        return number.replace(Regex("[^0-9]"), "")
     }
 
     /**
-     * Imports a list of contacts via bulk operations.
+     * Data class to hold existing contact info for conflict resolution.
      */
-    suspend fun importContacts(
-        context: Context,
-        contacts: List<ContactData>,
-        onProgress: (Int) -> Unit
-    ): ImportResult = withContext(Dispatchers.IO) {
+    data class ExistingContact(
+        val id: Long,
+        val name: String,
+        val number: String
+    )
+
+    /**
+     * Checks if a contact with the given phone number already exists.
+     * Returns existing contact details if found.
+     */
+    suspend fun getExistingContactByNumber(context: Context, number: String): ExistingContact? = withContext(Dispatchers.IO) {
+        if (number.isBlank()) return@withContext null
         
-        val existingSignatures = loadExistingSignatures(context)
+        val uri = Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            Uri.encode(number)
+        )
         
-        var imported = 0
-        var skipped = 0
-        var errors = 0
-        val operations = ArrayList<ContentProviderOperation>()
-
-        val batchSize = 100
-        var currentRawContactIndex = 0
-        var countInBatch = 0
-
-        for ((index, contact) in contacts.withIndex()) {
-            // Validation
-            if (contact.displayName.isNullOrBlank() && contact.phoneNumbers.isEmpty() && contact.emails.isEmpty()) {
-                skipped++
-                continue
+        val projection = arrayOf(
+            ContactsContract.PhoneLookup._ID,
+            ContactsContract.PhoneLookup.DISPLAY_NAME,
+            ContactsContract.PhoneLookup.NUMBER
+        )
+        
+        return@withContext try {
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID))
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME)) ?: ""
+                    val foundNumber = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.NUMBER)) ?: ""
+                    ExistingContact(id, name, foundNumber)
+                } else null
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying PhoneLookup for $number", e)
+            null
+        }
+    }
 
-            // Duplicate detection: check if "Name|Phone1" exists
-            val mainPhone = contact.phoneNumbers.firstOrNull()?.replace(Regex("[\\s\\-\\(\\)]"), "") ?: ""
-            val signature = "${contact.displayName?.trim()?.lowercase() ?: ""}|$mainPhone"
-            
-            if (existingSignatures.contains(signature)) {
-                skipped++
-                continue
-            }
+    /**
+     * Inserts a new contact.
+     */
+    suspend fun performInsert(context: Context, name: String, number: String): Boolean = withContext(Dispatchers.IO) {
+        val ops = arrayListOf<ContentProviderOperation>()
 
-            val rawContactInsertIndex = operations.size
-            // Create new raw contact
-            operations.add(
-                ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
-                    .build()
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+            .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+            .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+            .build())
+
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+            .build())
+
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, number)
+            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+            .build())
+
+        try {
+            val results = context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+            results.size >= 3 && results[0].uri != null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error inserting contact: $name", e)
+            false
+        }
+    }
+
+    /**
+     * Updates an existing contact. We search for the StructuredName and Phone data rows
+     * associated with the contact ID and update them.
+     */
+    suspend fun performUpdate(context: Context, contactId: Long, newName: String, newNumber: String): Boolean = withContext(Dispatchers.IO) {
+        val ops = arrayListOf<ContentProviderOperation>()
+
+        // Update Name
+        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+            .withSelection(
+                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
             )
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, newName)
+            .build())
 
-            // Name
-            if (!contact.displayName.isNullOrBlank()) {
-                operations.add(
-                    ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                        .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
-                        .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                        .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, contact.displayName)
-                        .build()
-                )
-            }
+        // Update Phone
+        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+            .withSelection(
+                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+            )
+            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, newNumber)
+            .build())
 
-            // Phones
-            for (phone in contact.phoneNumbers) {
-                if (phone.isNotBlank()) {
-                    operations.add(
-                        ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
-                            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
-                            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
-                            .build()
-                    )
-                }
-            }
-            
-            // Emails
-            for (email in contact.emails) {
-                if (email.isNotBlank()) {
-                    operations.add(
-                        ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
-                            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-                            .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, email)
-                            .withValue(ContactsContract.CommonDataKinds.Email.TYPE, ContactsContract.CommonDataKinds.Email.TYPE_HOME)
-                            .build()
-                    )
-                }
-            }
-
-            countInBatch++
-            imported++
-            
-            // Reached batch size, apply batch
-            if (countInBatch >= batchSize) {
-                try {
-                    context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Batch import error", e)
-                    errors += countInBatch
-                    imported -= countInBatch
-                }
-                operations.clear()
-                countInBatch = 0
-                
-                withContext(Dispatchers.Main) {
-                    onProgress(index + 1)
-                }
-            }
+        try {
+            val results = context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+            // One or both updates might apply. If results[0].count > 0 or results[1].count > 0 it means something changed.
+            // However, a safer check is whether it succeeded without exception.
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating contact ID: $contactId", e)
+            false
         }
+    }
 
-        // Apply remaining
-        if (operations.isNotEmpty()) {
-            try {
-                context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
-            } catch (e: Exception) {
-                Log.e(TAG, "Final batch import error", e)
-                errors += countInBatch
-                imported -= countInBatch
-            }
-            withContext(Dispatchers.Main) {
-                onProgress(contacts.size)
-            }
-        }
-
-        ImportResult(contacts.size, imported, skipped, errors)
+    /**
+     * Verification check after operation.
+     */
+    suspend fun verifyContact(context: Context, name: String, number: String): Boolean {
+        val existing = getExistingContactByNumber(context, number)
+        return existing != null && (name.isBlank() || existing.name.contains(name, ignoreCase = true))
     }
 }

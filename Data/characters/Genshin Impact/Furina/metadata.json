@@ -1,0 +1,44 @@
+﻿{
+  "id": "furina",
+  "name": "Furina de Fontaine",
+  "displayOrder": 1,
+  "version": 1,
+  "source": "Genshin Impact",
+  "category": "Game",
+  "description": "EXTREME COLOR TEST CONFIGURATION",
+  "copyright": {
+    "owner": "HoYoverse",
+    "series": "Genshin Impact"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#FF0000",
+    "secondary": "#00FF00",
+    "accent": "#0000FF",
+    "surface": "#111111",
+    "background": "#222222",
+    "text": "#FFFFFF",
+    "card": "#FFFF00"
+  },
+  "style": {
+    "personality": ["Flamboyant", "Dramatic", "Sensitive"],
+    "motifs": ["Bubbles", "Oceanid", "Theater"],
+    "accessories": ["Top hat", "Salon Solitaire"],
+    "animation": {
+      "transition": "fade",
+      "background": "parallax",
+      "accent": "water"
+    },
+    "iconStyle": "Regal"
+  }
+}

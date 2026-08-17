@@ -1,0 +1,44 @@
+﻿{
+  "id": "ellen-joe",
+  "name": "Ellen Joe",
+  "displayOrder": 5,
+  "version": 1,
+  "source": "Zenless Zone Zero",
+  "category": "Game",
+  "description": "An agent of Victoria Housekeeping with shark-like traits, known for her efficiency and indifferent demeanor.",
+  "copyright": {
+    "owner": "HoYoverse",
+    "series": "Zenless Zone Zero"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#000000",
+    "secondary": "#D32F2F",
+    "accent": "#00BCD4",
+    "surface": "#212121",
+    "background": "#000000",
+    "text": "#FFFFFF",
+    "card": "#37474F"
+  },
+  "style": {
+    "personality": ["Drowsy", "Efficient", "Indifferent"],
+    "motifs": ["Shark", "Anchor", "Sweets"],
+    "accessories": ["Shark tail", "Hair clips"],
+    "animation": {
+      "transition": "scale",
+      "background": "parallax",
+      "accent": "none"
+    },
+    "iconStyle": "Housekeeper"
+  }
+}

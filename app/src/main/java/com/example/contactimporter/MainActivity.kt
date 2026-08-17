@@ -9,27 +9,47 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.contactimporter.data.CharacterMetadata
+import com.example.contactimporter.data.ContactConflict
+import com.example.contactimporter.data.ConflictResolution
 import com.example.contactimporter.data.ImportResult
-import com.example.contactimporter.theme.AppTheme
+import com.example.contactimporter.data.ThemeConfig
+import com.example.contactimporter.theme.ThemeEngine
 import com.example.contactimporter.ui.AsyncUriImage
+import com.example.contactimporter.ui.components.*
+import kotlin.math.absoluteValue
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -37,178 +57,496 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle(
-                initialValue = AppTheme("default", null, null)
-            )
+            val themeConfig by viewModel.themeConfig.collectAsStateWithLifecycle()
+            val characters = viewModel.availableCharacters
+            val isDark = isSystemInDarkTheme()
             
-            AppContent(
-                viewModel = viewModel,
-                themeSettings = themeSettings
-            )
+            val activeCharacter = remember(themeConfig.characterId, characters) {
+                characters.find { it.id == themeConfig.characterId }
+            }
+            
+            val themeTokens = ThemeEngine.render(activeCharacter, themeConfig, isDark)
+            
+            CharacterThemeProvider(tokens = themeTokens, darkTheme = isDark) {
+                HomeScreen(
+                    viewModel = viewModel,
+                    themeConfig = themeConfig
+                )
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppContent(
+fun HomeScreen(
     viewModel: MainViewModel,
-    themeSettings: AppTheme
+    themeConfig: ThemeConfig
 ) {
     val importState by viewModel.importState.collectAsStateWithLifecycle()
+    val characters = viewModel.availableCharacters
+    val loadError = viewModel.characterLoadError
     val context = LocalContext.current
+    var showThemePicker by remember { mutableStateOf(false) }
 
-    // Launcher for READ/WRITE CONTACTS permissions
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions[Manifest.permission.READ_CONTACTS] == true &&
-            permissions[Manifest.permission.WRITE_CONTACTS] == true) {
-            // Permissions granted, can proceed with import if state is Ready
-            if (importState is ImportState.ReadyToImport) {
-                viewModel.startImport((importState as ImportState.ReadyToImport).contacts)
+        val granted = permissions[Manifest.permission.READ_CONTACTS] == true &&
+            permissions[Manifest.permission.WRITE_CONTACTS] == true
+        if (granted) {
+            val state = viewModel.importState.value
+            if (state is ImportState.ReadyToImport) {
+                viewModel.startImport(state.entries)
             }
         } else {
-            Toast.makeText(context, "Contacts permissions required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Permissions required for contact sync", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // JSON file picker
     val jsonPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? -> uri?.let { viewModel.parseJsonFile(it) } }
 
-    // Image pickers
-    val bgPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? -> viewModel.setBackgroundUri(uri) }
-
-    val logoPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? -> viewModel.setLogoUri(uri) }
-
-    // Dynamic Theme Colors based on preset
-    val (primaryColor, bgColor) = when (themeSettings.presetId) {
-        "dark" -> Color(0xFFBB86FC) to Color(0xFF121212)
-        "blue" -> Color(0xFF2196F3) to Color(0xFFBBDEFB)
-        "pink" -> Color(0xFFE91E63) to Color(0xFFFCE4EC)
-        else -> Color(0xFF6200EE) to Color(0xFFFFFFFF) // default light
-    }
-
-    MaterialTheme(
-        colorScheme = if (themeSettings.presetId == "dark") darkColorScheme(primary = primaryColor) 
-                      else lightColorScheme(primary = primaryColor, background = bgColor)
-    ) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            // Background Image
-            if (themeSettings.backgroundUri != null) {
-                AsyncUriImage(
-                    uriString = themeSettings.backgroundUri,
-                    contentDescription = "Background",
-                    modifier = Modifier.fillMaxSize().alpha(0.3f), // slight transparency
-                    contentScale = ContentScale.Crop
+    ThemedBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    ),
+                    title = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "CONTACT",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 4.sp
+                            )
+                            Text(
+                                text = "IMPORTER",
+                                modifier = Modifier.alpha(0.6f),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
+                        }
+                    },
+                    actions = {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 12.dp)) {
+                            Switch(
+                                checked = themeConfig.themeEnabled,
+                                onCheckedChange = { viewModel.toggleTheme(it) },
+                                modifier = Modifier.scale(0.8f),
+                                thumbContent = {
+                                    if (themeConfig.themeEnabled) {
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { showThemePicker = true },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Palette,
+                                    contentDescription = "Open Theme Picker",
+                                    tint = if (themeConfig.themeEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 )
             }
-
+        ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(padding)
+                    .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo
-                if (themeSettings.logoUri != null) {
-                    Box(modifier = Modifier.size(100.dp).padding(8.dp)) {
-                        AsyncUriImage(
-                            uriString = themeSettings.logoUri,
-                            contentDescription = "Logo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                } else {
-                    Text("Contact Importer", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
-                }
-
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Theme Settings Card
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                CharacterCarousel(
+                    characters = characters,
+                    loadError = loadError,
+                    selectedId = themeConfig.characterId,
+                    onSelect = { viewModel.setThemePreset(it) },
+                    modifier = Modifier.weight(1f)
+                )
+
+                InteractionHub(
+                    state = importState,
+                    onSelectFile = { jsonPickerLauncher.launch(arrayOf("application/json")) },
+                    onStartSync = {
+                        permissionLauncher.launch(
+                            arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
+                        )
+                    },
+                    onAbort = { viewModel.resetState() },
+                    onResolveConflict = { res, all -> viewModel.resolveConflict(res, all) },
+                    modifier = Modifier.padding(bottom = 32.dp)
+                )
+            }
+        }
+
+        if (showThemePicker) {
+            ThemePickerSheet(
+                characters = characters,
+                loadError = loadError,
+                currentConfig = themeConfig,
+                onDismiss = { showThemePicker = false },
+                onSelectCharacter = { viewModel.setThemePreset(it) }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThemePickerSheet(
+    characters: List<CharacterMetadata>,
+    loadError: String?,
+    currentConfig: ThemeConfig,
+    onDismiss: () -> Unit,
+    onSelectCharacter: (String) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            Text(
+                text = "Choose Character Theme",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+            )
+
+            if (characters.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Appearance Settings", fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { bgPickerLauncher.launch(arrayOf("image/*")) }) { Text("Set Background") }
-                            Button(onClick = { logoPickerLauncher.launch(arrayOf("image/*")) }) { Text("Set Logo") }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ThemePresetChip("Light", "default", themeSettings.presetId) { viewModel.setThemePreset(it) }
-                            ThemePresetChip("Dark", "dark", themeSettings.presetId) { viewModel.setThemePreset(it) }
-                            ThemePresetChip("Blue", "blue", themeSettings.presetId) { viewModel.setThemePreset(it) }
-                            ThemePresetChip("Pink", "pink", themeSettings.presetId) { viewModel.setThemePreset(it) }
-                        }
+                    Text(
+                        text = loadError ?: "No characters loaded",
+                        textAlign = TextAlign.Center,
+                        color = if (loadError != null) MaterialTheme.colorScheme.error else Color.Unspecified,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(characters) { character ->
+                        val isSelected = character.id == currentConfig.characterId
+                        ListItem(
+                            headlineContent = { 
+                                Text(
+                                    text = character.name, 
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified
+                                ) 
+                            },
+                            supportingContent = { Text(character.source, style = MaterialTheme.typography.bodySmall) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(14.dp)),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    AsyncUriImage(
+                                        uriString = character.images.portrait,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            },
+                            trailingContent = {
+                                RadioButton(selected = isSelected, onClick = null)
+                            },
+                            modifier = Modifier
+                                .clickable { onSelectCharacter(character.id) }
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else Color.Transparent)
+                        )
                     }
                 }
+            }
+            
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("APPLY & CLOSE", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        }
+    }
+}
 
-                // Main Import Action Card
-                Card(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(
-                        Modifier.padding(16.dp).fillMaxSize(), 
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        when (val state = importState) {
-                            is ImportState.Idle -> {
-                                Text("Select a JSON file containing your contacts.")
-                                Spacer(Modifier.height(16.dp))
-                                Button(onClick = { jsonPickerLauncher.launch(arrayOf("application/json")) }) {
-                                    Text("Pick JSON File")
+@Composable
+fun CharacterCarousel(
+    characters: List<CharacterMetadata>,
+    loadError: String?,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (characters.isEmpty()) {
+        Box(modifier = modifier.padding(horizontal = 48.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = loadError ?: "No characters loaded", 
+                textAlign = TextAlign.Center,
+                color = if (loadError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+        return
+    }
+
+    val pagerState = rememberPagerState(
+        initialPage = characters.indexOfFirst { it.id == selectedId }.coerceAtLeast(0),
+        pageCount = { characters.size }
+    )
+
+    LaunchedEffect(selectedId) {
+        val index = characters.indexOfFirst { it.id == selectedId }
+        if (index >= 0 && index != pagerState.currentPage) {
+            pagerState.animateScrollToPage(index)
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (characters.isNotEmpty() && pagerState.currentPage < characters.size) {
+            val character = characters[pagerState.currentPage]
+            if (character.id != selectedId) {
+                onSelect(character.id)
+            }
+        }
+    }
+
+    HorizontalPager(
+        state = pagerState,
+        contentPadding = PaddingValues(horizontal = 80.dp),
+        modifier = modifier.fillMaxWidth()
+    ) { page ->
+        val character = characters[page]
+        val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
+        
+        val scale = lerp(0.8f, 1.0f, 1f - pageOffset.coerceIn(0f, 1f))
+        val alpha = lerp(0.4f, 1f, 1f - pageOffset.coerceIn(0f, 1f))
+
+        Column(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    this.alpha = alpha
+                }
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier
+                    .aspectRatio(0.85f)
+                    .clip(RoundedCornerShape(32.dp))
+                    .clickable { onSelect(character.id) },
+                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                AsyncUriImage(
+                    uriString = character.images.portrait,
+                    contentDescription = character.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = character.name,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = character.source.uppercase(),
+                modifier = Modifier.alpha(0.5f),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun InteractionHub(
+    state: ImportState,
+    onSelectFile: () -> Unit,
+    onStartSync: () -> Unit,
+    onAbort: () -> Unit,
+    onResolveConflict: (ConflictResolution, Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ThemedCard(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    fadeIn(tween(400)) + scaleIn(initialScale = 0.92f) togetherWith
+                    fadeOut(tween(400)) + scaleOut(targetScale = 0.92f)
+                },
+                label = "UIFlow"
+            ) { targetState ->
+                when (targetState) {
+                    is ImportState.Idle -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.CloudQueue,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp).alpha(0.2f),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Database Ready",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Select a student registry JSON file to begin local synchronization.",
+                                modifier = Modifier.alpha(0.6f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            ThemedButton(
+                                onClick = onSelectFile,
+                                modifier = Modifier.fillMaxWidth().height(64.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.FileUpload, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(text = "SELECT JSON DATABASE", fontWeight = FontWeight.Black)
                                 }
                             }
-                            is ImportState.Parsing -> {
-                                CircularProgressIndicator()
-                                Text("Parsing...")
-                            }
-                            is ImportState.ReadyToImport -> {
-                                Text("Found ${state.contacts.size} contacts.", fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.height(16.dp))
-                                Button(onClick = {
-                                    permissionLauncher.launch(
-                                        arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
-                                    )
-                                }) {
-                                    Text("Start Import")
+                        }
+                    }
+
+                    is ImportState.Parsing -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            ThemedProgress()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "VALIDATING SCHEMA", 
+                                modifier = Modifier.alpha(0.5f),
+                                style = MaterialTheme.typography.labelLarge, 
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+
+                    is ImportState.ReadyToImport -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "${targetState.validCount} Contacts", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
+                            Text(
+                                text = "INTEGRITY VERIFIED", 
+                                modifier = Modifier.alpha(0.5f),
+                                style = MaterialTheme.typography.labelMedium, 
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                OutlinedButton(
+                                    onClick = onAbort, 
+                                    modifier = Modifier.weight(1f).height(56.dp), 
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(text = "ABORT", fontWeight = FontWeight.Bold)
                                 }
-                                Spacer(Modifier.height(8.dp))
-                                TextButton(onClick = { viewModel.resetState() }) {
-                                    Text("Cancel")
+                                ThemedButton(
+                                    onClick = onStartSync, 
+                                    modifier = Modifier.weight(2f).height(56.dp)
+                                ) {
+                                    Text(text = "BEGIN SYNC", fontWeight = FontWeight.Black)
                                 }
                             }
-                            is ImportState.Importing -> {
-                                CircularProgressIndicator(progress = { if (state.total > 0) state.progress.toFloat() / state.total else 0f })
-                                Text("Importing: ${state.progress} / ${state.total}")
-                            }
-                            is ImportState.Finished -> {
-                                SummaryView(state.result)
-                                Spacer(Modifier.height(16.dp))
-                                Button(onClick = { viewModel.resetState() }) {
-                                    Text("Done")
-                                }
-                            }
-                            is ImportState.Error -> {
-                                Text("Error: ${state.message}", color = MaterialTheme.colorScheme.error)
-                                Spacer(Modifier.height(16.dp))
-                                Button(onClick = { viewModel.resetState() }) {
-                                    Text("Try Again")
-                                }
+                        }
+                    }
+
+                    is ImportState.Importing -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val progressValue = if (targetState.total > 0) targetState.progress.toFloat() / targetState.total else 0f
+                            LinearProgressIndicator(
+                                progress = { progressValue },
+                                modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "SYNCING: ${targetState.progress} / ${targetState.total}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+
+                    is ImportState.Conflict -> {
+                        ConflictResolutionUI(conflict = targetState.conflict, onResolve = onResolveConflict)
+                    }
+
+                    is ImportState.Finished -> {
+                        SyncReport(result = targetState.result, onDone = onAbort)
+                    }
+
+                    is ImportState.Error -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.SyncProblem, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(text = "SYNC FAILURE", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
+                            Text(
+                                text = targetState.message, 
+                                modifier = Modifier.alpha(0.7f),
+                                style = MaterialTheme.typography.bodyMedium, 
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            ThemedButton(onClick = onAbort, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                                Text(text = "TRY AGAIN", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -219,31 +557,102 @@ fun AppContent(
 }
 
 @Composable
-fun ThemePresetChip(label: String, id: String, currentId: String, onClick: (String) -> Unit) {
-    val isSelected = currentId == id
-    Surface(
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.clickable { onClick(id) }
-    ) {
-        Text(
-            text = label, 
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+fun ConflictResolutionUI(
+    conflict: ContactConflict,
+    onResolve: (ConflictResolution, Boolean) -> Unit
+) {
+    var applyToAll by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = "Conflict Detected", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
+        
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(text = "Existing: ${conflict.existingName}", fontWeight = FontWeight.Bold)
+                Text(text = conflict.existingNumber, style = MaterialTheme.typography.bodySmall, modifier = Modifier.alpha(0.6f))
+            }
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(text = "Incoming: ${conflict.incomingName}", fontWeight = FontWeight.Bold)
+                Text(text = conflict.incomingNumber, style = MaterialTheme.typography.bodySmall, modifier = Modifier.alpha(0.6f))
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically, 
+            modifier = Modifier.clickable { applyToAll = !applyToAll }
+        ) {
+            Checkbox(checked = applyToAll, onCheckedChange = { applyToAll = it })
+            Text(text = "Apply to all remaining conflicts", style = MaterialTheme.typography.bodySmall)
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { onResolve(ConflictResolution.SKIP, applyToAll) },
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(text = "SKIP")
+            }
+            Button(
+                onClick = { onResolve(ConflictResolution.OVERWRITE, applyToAll) },
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(text = "OVERWRITE")
+            }
+        }
     }
 }
 
 @Composable
-fun SummaryView(result: ImportResult) {
+fun SyncReport(result: ImportResult, onDone: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Import Complete!", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        Spacer(Modifier.height(8.dp))
-        Text("Total Processed: ${result.totalContacts}")
-        Text("Successfully Imported: ${result.importedContacts}", color = Color(0xFF4CAF50))
-        Text("Skipped (Duplicates/Empty): ${result.duplicatesSkipped}", color = Color(0xFFFF9800))
-        if (result.errors > 0) {
-            Text("Errors: ${result.errors}", color = MaterialTheme.colorScheme.error)
+        Text(
+            text = "SYNC SUCCESSFUL", 
+            modifier = Modifier.alpha(0.4f),
+            style = MaterialTheme.typography.labelLarge, 
+            fontWeight = FontWeight.Black
+        )
+        Text(text = "Database Updated", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            SyncMetric("NEW", result.created.toString(), Color(0xFF4CAF50))
+            SyncMetric("UPDATED", result.updated.toString(), Color(0xFF2196F3))
+            SyncMetric("SKIPPED", result.skipped.toString(), Color(0xFFFF9800))
         }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        ThemedButton(onClick = onDone, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            Text(text = "FINISH", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        }
+    }
+}
+
+@Composable
+fun SyncMetric(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, color = color)
+        Text(
+            text = label, 
+            modifier = Modifier.alpha(0.5f),
+            style = MaterialTheme.typography.labelSmall, 
+            fontWeight = FontWeight.ExtraBold
+        )
     }
 }

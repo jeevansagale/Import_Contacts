@@ -1,0 +1,44 @@
+﻿{
+  "id": "columbina",
+  "name": "Columbina",
+  "displayOrder": 4,
+  "version": 1,
+  "source": "Genshin Impact",
+  "category": "Game",
+  "description": "The Third of the Eleven Fatui Harbingers, also known as 'Damselette', known for her eerie serenity.",
+  "copyright": {
+    "owner": "HoYoverse",
+    "series": "Genshin Impact"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#FAFAFA",
+    "secondary": "#D32F2F",
+    "accent": "#F06292",
+    "surface": "#FFFFFF",
+    "background": "#FFEBEE",
+    "text": "#000000",
+    "card": "#FFCDD2"
+  },
+  "style": {
+    "personality": ["Serene", "Eerie", "Unsettling"],
+    "motifs": ["Feathers", "Wings", "Blindfold"],
+    "accessories": ["Blindfold", "Feathered ornaments"],
+    "animation": {
+      "transition": "fade",
+      "background": "blur",
+      "accent": "feathers"
+    },
+    "iconStyle": "Fatui"
+  }
+}

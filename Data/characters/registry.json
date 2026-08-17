@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "characters": [
+    {
+      "id": "furina",
+      "displayOrder": 1,
+      "path": "Genshin Impact/Furina"
+    },
+    {
+      "id": "raiden-shogun",
+      "displayOrder": 2,
+      "path": "Genshin Impact/Raiden Shogun"
+    },
+    {
+      "id": "citlali",
+      "displayOrder": 3,
+      "path": "Genshin Impact/Citlali"
+    },
+    {
+      "id": "columbina",
+      "displayOrder": 4,
+      "path": "Genshin Impact/Columbina"
+    },
+    {
+      "id": "ellen-joe",
+      "displayOrder": 5,
+      "path": "Zenless Zone Zero/Ellen Joe"
+    },
+    {
+      "id": "jane-doe",
+      "displayOrder": 6,
+      "path": "Zenless Zone Zero/Jane Doe"
+    },
+    {
+      "id": "makima",
+      "displayOrder": 7,
+      "path": "Chainsaw Man/Makima"
+    },
+    {
+      "id": "power",
+      "displayOrder": 8,
+      "path": "Chainsaw Man/Power"
+    },
+    {
+      "id": "reze",
+      "displayOrder": 9,
+      "path": "Chainsaw Man/Reze"
+    },
+    {
+      "id": "mikasa-ackerman",
+      "displayOrder": 10,
+      "path": "Attack on Titan/Mikasa Ackerman"
+    },
+    {
+      "id": "historia-reiss",
+      "displayOrder": 11,
+      "path": "Attack on Titan/Historia Reiss"
+    },
+    {
+      "id": "rukia-kuchiki",
+      "displayOrder": 12,
+      "path": "Bleach/Rukia Kuchiki"
+    },
+    {
+      "id": "yoruichi-shihoin",
+      "displayOrder": 13,
+      "path": "Bleach/Yoruichi Shihoin"
+    }
+  ]
+}

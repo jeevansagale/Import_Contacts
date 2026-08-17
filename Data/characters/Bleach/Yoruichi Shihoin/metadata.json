@@ -1,0 +1,44 @@
+﻿{
+  "id": "yoruichi-shihoin",
+  "name": "Yoruichi Shihoin",
+  "displayOrder": 13,
+  "version": 1,
+  "source": "Bleach",
+  "category": "Anime",
+  "description": "Former Captain of the 2nd Division and commander of the Stealth Force, known as the 'Flash Goddess' for her unmatched speed.",
+  "copyright": {
+    "owner": "Tite Kubo / Shueisha",
+    "series": "Bleach"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#4A148C",
+    "secondary": "#E65100",
+    "accent": "#000000",
+    "surface": "#212121",
+    "background": "#121212",
+    "text": "#FFFFFF",
+    "card": "#37474F"
+  },
+  "style": {
+    "personality": ["Playful", "Witty", "Strategic"],
+    "motifs": ["Black cat", "Lightning", "Speed"],
+    "accessories": ["Stealth Force gear"],
+    "animation": {
+      "transition": "spring",
+      "background": "blur",
+      "accent": "lightning"
+    },
+    "iconStyle": "Stealth"
+  }
+}

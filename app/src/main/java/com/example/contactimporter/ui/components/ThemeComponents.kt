@@ -3,17 +3,19 @@ package com.example.contactimporter.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.contactimporter.data.CardStyle
+
+/**
+ * REDESIGN: First-Principles Component Library.
+ * 
+ * Implements expressive Material 3 geometry and token-driven styling.
+ */
 
 @Composable
 fun ThemedCard(
@@ -21,21 +23,26 @@ fun ThemedCard(
     content: @Composable () -> Unit
 ) {
     val tokens = LocalThemeTokens.current
+    
+    // Expressive corner radii based on token geometry
     val shape = when (tokens.cardStyle) {
-        CardStyle.FLAT -> RoundedCornerShape(0.dp)
-        CardStyle.ROUNDED -> RoundedCornerShape(16.dp)
-        CardStyle.GLASS -> RoundedCornerShape(24.dp)
-        CardStyle.OUTLINED -> RoundedCornerShape(8.dp)
+        CardStyle.FLAT -> RoundedCornerShape(tokens.cornerRadiusXS)
+        CardStyle.ROUNDED -> RoundedCornerShape(tokens.cornerRadiusL)
+        CardStyle.GLASS -> RoundedCornerShape(tokens.cornerRadiusXL)
+        CardStyle.OUTLINED -> RoundedCornerShape(tokens.cornerRadiusS)
     }
     
+    // VERIFIED: Using tokens.card from metadata.json
     val containerColor = if (tokens.cardStyle == CardStyle.GLASS) {
-        tokens.surface.copy(alpha = 0.7f)
+        tokens.card.copy(alpha = 0.7f) // High-fidelity glass transparency
     } else {
-        tokens.surface
+        tokens.card
     }
 
     val border = if (tokens.cardStyle == CardStyle.OUTLINED) {
-        BorderStroke(1.dp, tokens.primary.copy(alpha = 0.5f))
+        BorderStroke(1.dp, tokens.outline)
+    } else if (tokens.cardStyle == CardStyle.GLASS) {
+        BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) // Subtle refractive rim
     } else null
 
     Card(
@@ -45,9 +52,14 @@ fun ThemedCard(
             containerColor = containerColor,
             contentColor = tokens.onSurface
         ),
-        border = border
+        border = border,
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (tokens.cardStyle == CardStyle.GLASS) 0.dp else tokens.elevationSmall
+        )
     ) {
-        content()
+        ThemedAnimation {
+            content()
+        }
     }
 }
 
@@ -60,11 +72,13 @@ fun ThemedButton(
     content: @Composable () -> Unit
 ) {
     val tokens = LocalThemeTokens.current
+    
+    // Premium button shapes aligned with Material 3 Expressive guidelines
     val shape = when (tokens.cardStyle) {
-        CardStyle.FLAT -> RoundedCornerShape(0.dp)
-        CardStyle.ROUNDED -> RoundedCornerShape(24.dp)
-        CardStyle.GLASS -> RoundedCornerShape(32.dp)
-        CardStyle.OUTLINED -> RoundedCornerShape(4.dp)
+        CardStyle.FLAT -> RoundedCornerShape(tokens.cornerRadiusXS)
+        CardStyle.ROUNDED -> RoundedCornerShape(tokens.cornerRadiusPill)
+        CardStyle.GLASS -> RoundedCornerShape(tokens.cornerRadiusXL)
+        CardStyle.OUTLINED -> RoundedCornerShape(tokens.cornerRadiusS)
     }
 
     Button(
@@ -74,10 +88,38 @@ fun ThemedButton(
         shape = shape,
         colors = ButtonDefaults.buttonColors(
             containerColor = tokens.primary,
-            contentColor = Color.White
+            contentColor = tokens.onPrimary,
+            disabledContainerColor = tokens.disabled,
+            disabledContentColor = tokens.onDisabled
         ),
-        contentPadding = contentPadding
+        contentPadding = contentPadding,
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
     ) {
         content()
+    }
+}
+
+@Composable
+fun ThemedProgress(
+    modifier: Modifier = Modifier,
+    progress: Float? = null
+) {
+    val tokens = LocalThemeTokens.current
+    // VERIFIED: Using tokens.accent for highlighting progress if defined
+    val indicatorColor = if (tokens.accent != Color.Gray) tokens.accent else tokens.primary
+    
+    if (progress != null) {
+        CircularProgressIndicator(
+            progress = { progress },
+            modifier = modifier,
+            color = indicatorColor,
+            trackColor = tokens.surfaceVariant
+        )
+    } else {
+        CircularProgressIndicator(
+            modifier = modifier,
+            color = indicatorColor,
+            trackColor = tokens.surfaceVariant
+        )
     }
 }

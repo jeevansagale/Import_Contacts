@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
+import java.io.InputStream
 
 @Composable
 fun AsyncUriImage(
@@ -40,8 +41,15 @@ fun AsyncUriImage(
 
 suspend fun loadBitmapFromUri(context: Context, uri: Uri): ImageBitmap? = withContext(Dispatchers.IO) {
     try {
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            BitmapFactory.decodeStream(inputStream)?.asImageBitmap()
+        val inputStream: InputStream? = if (uri.scheme == "file" && uri.path?.startsWith("/android_asset/") == true) {
+            val path = uri.path!!.substring("/android_asset/".length)
+            context.assets.open(path)
+        } else {
+            context.contentResolver.openInputStream(uri)
+        }
+        
+        inputStream?.use { 
+            BitmapFactory.decodeStream(it)?.asImageBitmap()
         }
     } catch (e: Exception) {
         Log.e("ImageHelper", "Failed to load image $uri", e)

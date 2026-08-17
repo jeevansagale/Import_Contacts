@@ -1,0 +1,44 @@
+﻿{
+  "id": "rukia-kuchiki",
+  "name": "Rukia Kuchiki",
+  "displayOrder": 12,
+  "version": 1,
+  "source": "Bleach",
+  "category": "Anime",
+  "description": "A Soul Reaper and the current Captain of the 13th Division, instrumental in the development of Ichigo Kurosaki's powers.",
+  "copyright": {
+    "owner": "Tite Kubo / Shueisha",
+    "series": "Bleach"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#E3F2FD",
+    "secondary": "#1A237E",
+    "accent": "#AB47BC",
+    "surface": "#FFFFFF",
+    "background": "#FAFAFA",
+    "text": "#212121",
+    "card": "#F3E5F5"
+  },
+  "style": {
+    "personality": ["Dignified", "Stern", "Artistic"],
+    "motifs": ["Snowflakes", "Ice", "Butterfly"],
+    "accessories": ["Sode no Shirayuki", "Captain's haori"],
+    "animation": {
+      "transition": "fade",
+      "background": "blur",
+      "accent": "snow"
+    },
+    "iconStyle": "Soul Reaper"
+  }
+}

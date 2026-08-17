@@ -1,0 +1,44 @@
+﻿{
+  "id": "jane-doe",
+  "name": "Jane Doe",
+  "displayOrder": 6,
+  "version": 1,
+  "source": "Zenless Zone Zero",
+  "category": "Game",
+  "description": "A criminal investigation consultant with rat-like traits, highly professional yet provocative.",
+  "copyright": {
+    "owner": "HoYoverse",
+    "series": "Zenless Zone Zero"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#D32F2F",
+    "secondary": "#000000",
+    "accent": "#FBC02D",
+    "surface": "#212121",
+    "background": "#121212",
+    "text": "#FFFFFF",
+    "card": "#424242"
+  },
+  "style": {
+    "personality": ["Provocative", "Sly", "Professional"],
+    "motifs": ["Rat", "Crime scene", "Daggers"],
+    "accessories": ["Rat tail", "Choker"],
+    "animation": {
+      "transition": "spring",
+      "background": "parallax",
+      "accent": "none"
+    },
+    "iconStyle": "Agent"
+  }
+}

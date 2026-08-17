@@ -1,0 +1,44 @@
+﻿{
+  "id": "citlali",
+  "name": "Citlali",
+  "displayOrder": 3,
+  "version": 1,
+  "source": "Genshin Impact",
+  "category": "Game",
+  "description": "A high-ranking priestess of the Masters of the Night-Wind in Natlan, skilled in ancient arts.",
+  "copyright": {
+    "owner": "HoYoverse",
+    "series": "Genshin Impact"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#6A1B9A",
+    "secondary": "#F06292",
+    "accent": "#FFD54F",
+    "surface": "#4A148C",
+    "background": "#21004A",
+    "text": "#FFFFFF",
+    "card": "#8E24AA"
+  },
+  "style": {
+    "personality": ["Aloof", "Mysterious", "Wise"],
+    "motifs": ["Stars", "Night sky", "Owls"],
+    "accessories": ["Headpiece", "Grappling hook"],
+    "animation": {
+      "transition": "fade",
+      "background": "parallax",
+      "accent": "mystical"
+    },
+    "iconStyle": "Celestial"
+  }
+}

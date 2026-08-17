@@ -1,0 +1,44 @@
+﻿{
+  "id": "reze",
+  "name": "Reze",
+  "displayOrder": 9,
+  "version": 1,
+  "source": "Chainsaw Man",
+  "category": "Anime",
+  "description": "A hybrid from the Soviet Union and the Bomb Devil, who initially appears as a kind-hearted girl working at a cafe.",
+  "copyright": {
+    "owner": "Tatsuki Fujimoto / Shueisha",
+    "series": "Chainsaw Man"
+  },
+  "supportsTheme": true,
+  "images": {
+    "hero": "images/hero.jpg",
+    "portrait": "images/portrait.jpg",
+    "background": "images/background.jpg"
+  },
+  "assets": {
+    "hero": true,
+    "portrait": true,
+    "background": true
+  },
+  "theme": {
+    "primary": "#7E57C2",
+    "secondary": "#455A64",
+    "accent": "#FF1744",
+    "surface": "#B0BEC5",
+    "background": "#263238",
+    "text": "#FFFFFF",
+    "card": "#37474F"
+  },
+  "style": {
+    "personality": ["Deceptive", "Charming", "Tragic"],
+    "motifs": ["Bombs", "Dynamite", "Flowers"],
+    "accessories": ["Choker", "Apron"],
+    "animation": {
+      "transition": "scale",
+      "background": "parallax",
+      "accent": "explosive"
+    },
+    "iconStyle": "Bomb"
+  }
+}
