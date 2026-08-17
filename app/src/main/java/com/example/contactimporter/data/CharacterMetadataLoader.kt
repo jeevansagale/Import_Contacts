@@ -18,42 +18,57 @@ object CharacterMetadataLoader {
     var lastError: String? = null
         private set
 
-    /**
-     * Loads the character library from assets with high fault tolerance and detailed diagnostics.
-     * One invalid character must NEVER prevent the rest from loading.
-     */
     fun loadRegistry(context: Context): List<CharacterMetadata> {
         lastError = null
         val characters = mutableListOf<CharacterMetadata>()
         val skipped = mutableListOf<Pair<String, String>>()
 
         Log.d(TAG, "=== CHARACTER LIBRARY LOAD START ===")
-        Log.d(TAG, "Registry path: assets/$ASSET_ROOT/registry.json")
+        Log.d(TAG, "ASSET_ROOT: $ASSET_ROOT")
+        
+        // Step 6 Check: List root assets to see if 'characters' is even there
+        try {
+            val rootAssets = context.assets.list("") ?: emptyArray()
+            Log.d(TAG, "Root assets found: ${rootAssets.joinToString(", ")}")
+            
+            // Check if ASSET_ROOT exists in root
+            if (!rootAssets.contains(ASSET_ROOT)) {
+                Log.e(TAG, "CRITICAL: '$ASSET_ROOT' folder not found in assets root!")
+                
+                // Debug: List contents of root to see where it might be
+                rootAssets.forEach { asset ->
+                    val subAssets = context.assets.list(asset)
+                    Log.d(TAG, "Asset: $asset, Sub-assets: ${subAssets?.joinToString(", ")}")
+                }
+            } else {
+                Log.d(TAG, "SUCCESS: '$ASSET_ROOT' folder found in assets root.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to list assets: ${e.message}")
+        }
 
-        // 1. Load registry.json
         val registryPath = "$ASSET_ROOT/registry.json"
+        Log.d(TAG, "Registry path: assets/$registryPath")
+
         val registryText = try {
             context.assets.open(registryPath).bufferedReader().use { it.readText() }
         } catch (e: Exception) {
             val msg = "Registry not found: assets/$registryPath — ${e.message}"
-            Log.e(TAG, msg, e)
+            Log.e(TAG, msg)
             lastError = msg
             Log.e(TAG, "=== CHARACTER LIBRARY LOAD FAILED ===")
             return emptyList()
         }
 
         Log.d(TAG, "Registry found: YES")
-        Log.d(TAG, "Registry size: ${registryText.length} bytes")
+        Log.d(TAG, "Registry content length: ${registryText.length}")
 
-        // 2. Parse registry.json
         val registryJson = try {
             json.parseToJsonElement(registryText).jsonObject
         } catch (e: Exception) {
             val msg = "Failed to parse registry.json: ${e.message}"
             Log.e(TAG, msg)
-            e.printStackTrace()
             lastError = msg
-            Log.e(TAG, "=== CHARACTER LIBRARY LOAD FAILED ===")
             return emptyList()
         }
 
@@ -62,64 +77,51 @@ object CharacterMetadataLoader {
             val msg = "Registry.json missing 'characters' array"
             Log.e(TAG, msg)
             lastError = msg
-            Log.e(TAG, "=== CHARACTER LIBRARY LOAD FAILED ===")
             return emptyList()
         }
 
-        val totalInRegistry = characterEntries.size
-        Log.d(TAG, "Registry entries: $totalInRegistry")
-        Log.d(TAG, "")
+        Log.d(TAG, "Registry entries discovered: ${characterEntries.size}")
 
-        // 3. Load each character
         characterEntries.forEach { element ->
             val path = element.jsonObject["path"]?.jsonPrimitive?.content ?: "unknown"
             val charId = element.jsonObject["id"]?.jsonPrimitive?.content ?: "unknown"
 
-            Log.d(TAG, "--- Loading: $charId ---")
-            Log.d(TAG, "  path = $path")
-
+            Log.d(TAG, "[Character Pipeline] Processing: $charId")
+            
             val charFolder = "$ASSET_ROOT/$path"
             val metadataPath = "$charFolder/metadata.json"
+            Log.d(TAG, "  Loading metadata from: assets/$metadataPath")
 
             try {
-                // 3a. Fetch metadata file
                 val metadataText = try {
                     context.assets.open(metadataPath).bufferedReader().use { it.readText() }
                 } catch (e: IOException) {
-                    Log.e(TAG, "  metadata: MISSING ($metadataPath)")
-                    Log.e(TAG, "  Exception: ${e.message}")
+                    Log.e(TAG, "  FAILED: metadata.json missing at $metadataPath")
                     skipped.add(charId to "Missing metadata.json")
                     return@forEach
                 }
-                Log.d(TAG, "  metadata: FOUND (${metadataText.length} bytes)")
-                Log.d(TAG, "  first 200 chars: ${metadataText.take(200)}")
+                
+                val cleanedMetadataText = if (metadataText.startsWith("\uFEFF")) {
+                    Log.d(TAG, "  BOM detected and removed for $charId")
+                    metadataText.removePrefix("\uFEFF")
+                } else {
+                    metadataText
+                }
 
-                // 3b. Parse metadata
                 val metadata = try {
-                    json.decodeFromString<CharacterMetadata>(metadataText)
-                } catch (e: SerializationException) {
-                    Log.e(TAG, "  metadata: PARSE FAILED")
-                    Log.e(TAG, "  Reason: ${e.message}")
-                    e.printStackTrace()
-                    skipped.add(charId to "Parse Error")
-                    return@forEach
+                    json.decodeFromString<CharacterMetadata>(cleanedMetadataText)
                 } catch (e: Exception) {
-                    Log.e(TAG, "  metadata: PARSE FAILED (unexpected)")
-                    Log.e(TAG, "  Reason: ${e.message}")
-                    e.printStackTrace()
-                    skipped.add(charId to "Parse Error")
-                    return@forEach
-                }
-                Log.d(TAG, "  metadata: PARSED OK (id=${metadata.id}, name=${metadata.name})")
-
-                // 3c. Validate required fields
-                if (metadata.id.isBlank() || metadata.name.isBlank()) {
-                    Log.e(TAG, "  metadata: VALIDATION FAILED (empty id or name)")
-                    skipped.add(charId to "Validation Error (empty id/name)")
+                    Log.e(TAG, "  FAILED: metadata.json parse error: ${e.message}")
+                    skipped.add(charId to "Parse error")
                     return@forEach
                 }
 
-                // 3d. Resolve image paths (absolute asset URIs)
+                if (metadata.id.isBlank()) {
+                    Log.e(TAG, "  FAILED: metadata.id is blank")
+                    skipped.add(charId to "Invalid ID")
+                    return@forEach
+                }
+
                 val resolvedMetadata = metadata.copy(
                     images = metadata.images.copy(
                         hero = "file:///android_asset/$charFolder/${metadata.images.hero}",
@@ -128,57 +130,30 @@ object CharacterMetadataLoader {
                     )
                 )
 
-                // 3e. Check images (advisory only — do NOT exclude character)
-                val missingImages = checkImages(context, resolvedMetadata)
-                if (missingImages.isNotEmpty()) {
-                    Log.w(TAG, "  images: MISSING ${missingImages.joinToString(", ")}")
-                    Log.w(TAG, "  (character will still be included)")
+                // Verify Images
+                val missing = checkImages(context, resolvedMetadata)
+                if (missing.isNotEmpty()) {
+                    Log.w(TAG, "  WARNING: Missing assets for ${metadata.name}: ${missing.joinToString(", ")}")
                 } else {
-                    Log.d(TAG, "  images: ALL VERIFIED")
+                    Log.d(TAG, "  SUCCESS: All assets verified for ${metadata.name}")
                 }
 
-                // 3f. Add character to list
                 characters.add(resolvedMetadata)
-                Log.d(TAG, "  status: LOADED ✓")
+                Log.d(TAG, "  LOADED: ${metadata.name}")
 
             } catch (e: Exception) {
-                Log.e(TAG, "  UNEXPECTED ERROR loading $path", e)
-                e.printStackTrace()
-                skipped.add(charId to "Unexpected Error")
+                Log.e(TAG, "  CRITICAL ERROR loading $charId: ${e.message}")
             }
         }
 
-        // 4. Final summary
-        Log.d(TAG, "")
-        Log.d(TAG, "===================================")
-        Log.d(TAG, "Successfully loaded:")
-        if (characters.isNotEmpty()) {
-            characters.sortedBy { it.displayOrder }.forEach { c ->
-                Log.d(TAG, "  ✓ ${c.name} (${c.source})")
-            }
-        } else {
-            Log.d(TAG, "  (none)")
-        }
-        if (skipped.isNotEmpty()) {
-            Log.d(TAG, "Failed:")
-            skipped.forEach { (id, reason) ->
-                val displayName = id.split("-").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-                Log.d(TAG, "  ✗ $displayName ($reason)")
-            }
-        } else {
-            Log.d(TAG, "Failed: <none>")
-        }
-        Log.d(TAG, "")
-        Log.d(TAG, "Final character count: ${characters.size}")
-        Log.d(TAG, "===================================")
+        Log.d(TAG, "=== CHARACTER LIBRARY SUMMARY ===")
+        Log.d(TAG, "Total Loaded: ${characters.size}")
+        Log.d(TAG, "Total Skipped: ${skipped.size}")
+        Log.d(TAG, "=== LOAD END ===")
 
         return characters.sortedBy { it.displayOrder }
     }
 
-    /**
-     * Checks which images are missing but does NOT exclude the character.
-     * Returns a list of missing image type names (empty = all present).
-     */
     private fun checkImages(context: Context, metadata: CharacterMetadata): List<String> {
         val missing = mutableListOf<String>()
         val images = listOf(
@@ -192,7 +167,6 @@ object CharacterMetadataLoader {
             try {
                 context.assets.open(assetPath).use { it.close() }
             } catch (e: IOException) {
-                Log.w(TAG, "    Missing $type image: $assetPath")
                 missing.add(type)
             }
         }

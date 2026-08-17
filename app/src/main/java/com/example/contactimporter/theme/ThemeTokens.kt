@@ -32,6 +32,7 @@ data class ThemeTokens(
     val card: Color, // Mapped from theme.card in metadata.json
     val scrim: Color,
     val inverseSurface: Color,
+    val surfaceTint: Color,
 
     // ── Outlines & dividers ───────────────────────────────────────
     val outline: Color,
@@ -83,5 +84,18 @@ data class ThemeTokens(
     val customLogoUri: String? = null,
     val heroAssetPath: String? = null,
     val portraitAssetPath: String? = null,
-    val backgroundAssetPath: String? = null
+    val backgroundAssetPath: String? = null,
+    
+    // ── Premium Atmosphere ────────────────────────────────────────
+    val backgroundGradient: List<Color> = emptyList(),
+    val primaryAccent: Color,
+    val secondaryAccent: Color,
+    val ambientColor: Color,
+    val backgroundOverlay: Color,
+    val backgroundOpacity: Float = 0.40f,
+    val heroAlignment: String = "center",
+    val blurStrength: Int = 15,
+    val themeMood: String = "neutral",
+    val gradientStart: Color,
+    val gradientEnd: Color
 )

@@ -49,6 +49,7 @@ object ThemePresets {
         card = Base.LightSurface,
         scrim = Color(0x66000000),
         inverseSurface = Color(0xFF2C3547),
+        surfaceTint = Color.Transparent,
         outline = Color(0xFFB8C4D4),
         outlineVariant = Color(0xFFD8E0EA),
         divider = Color(0xFFE4E9F0),
@@ -69,7 +70,13 @@ object ThemePresets {
         isDark = false,
         cardStyle = CardStyle.ROUNDED,
         animationStyle = AnimationStyle.NONE,
-        backgroundStyle = BackgroundStyle.GRADIENT
+        backgroundStyle = BackgroundStyle.GRADIENT,
+        primaryAccent = Base.LightPrimary,
+        secondaryAccent = Base.LightSecondary,
+        ambientColor = Color.Black,
+        backgroundOverlay = Color.Black,
+        gradientStart = Color.Transparent,
+        gradientEnd = Color.Transparent
     )
 
     private val Dark = ThemeTokens(
@@ -90,6 +97,7 @@ object ThemePresets {
         card = Base.DarkSurface,
         scrim = Color(0x99000000),
         inverseSurface = Color(0xFFE8EDF5),
+        surfaceTint = Color.Transparent,
         outline = Color(0xFF4E5B70),
         outlineVariant = Color(0xFF3A4558),
         divider = Color(0xFF2A3548),
@@ -110,7 +118,13 @@ object ThemePresets {
         isDark = true,
         cardStyle = CardStyle.ROUNDED,
         animationStyle = AnimationStyle.NONE,
-        backgroundStyle = BackgroundStyle.GRADIENT
+        backgroundStyle = BackgroundStyle.GRADIENT,
+        primaryAccent = Base.DarkPrimary,
+        secondaryAccent = Base.DarkSecondary,
+        ambientColor = Color.Black,
+        backgroundOverlay = Color.Black,
+        gradientStart = Color.Transparent,
+        gradientEnd = Color.Transparent
     )
 
     /** Fallback light token set — used before a character theme resolves. */

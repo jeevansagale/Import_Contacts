@@ -22,13 +22,14 @@
     "background": true
   },
   "theme": {
-    "primary": "#D32F2F",
-    "secondary": "#F5F5F5",
-    "accent": "#FFEB3B",
-    "surface": "#FFFFFF",
-    "background": "#CFD8DC",
-    "text": "#000000",
-    "card": "#ECEFF1"
+    "primary": "#8B0000",
+    "secondary": "#A52A2A",
+    "accent": "#FFFFFF",
+    "surface": "#1C2432",
+    "background": "#121823",
+    "text": "#F0F4FA",
+    "card": "#242F40",
+    "surfaceTint": "#1C243240"
   },
   "style": {
     "personality": ["Calculating", "Cunning", "Authoritative"],
@@ -39,6 +40,8 @@
       "background": "none",
       "accent": "none"
     },
-    "iconStyle": "Corporate"
+    "iconStyle": "Corporate",
+    "gradientStart": "#8B000040",
+    "gradientEnd": "#121823"
   }
 }

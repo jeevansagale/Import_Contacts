@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -174,6 +175,10 @@ fun HomeScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
+                HeroSection(modifier = Modifier.fillMaxWidth().height(200.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 CharacterCarousel(
                     characters = characters,
                     loadError = loadError,
@@ -306,6 +311,53 @@ fun ThemePickerSheet(
             ) {
                 Text("APPLY & CLOSE", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
+        }
+    }
+}
+
+@Composable
+fun HeroSection(modifier: Modifier = Modifier) {
+    val tokens = LocalThemeTokens.current
+    val heroPath = tokens.heroAssetPath
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(240.dp) // Increased height for premium feel
+            .graphicsLayer {
+                // Subtle parallax effect based on scroll or just static depth
+                alpha = 1f
+            },
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        if (heroPath != null) {
+            // Hero Image
+            AsyncUriImage(
+                uriString = heroPath,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        // Soft fade at the bottom to blend into background
+                        alpha = 1f
+                    },
+                contentScale = ContentScale.Fit
+            )
+            
+            // Bottom Fade Overlay to blend hero into background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                tokens.background.copy(alpha = 1.0f)
+                            )
+                        )
+                    )
+            )
         }
     }
 }

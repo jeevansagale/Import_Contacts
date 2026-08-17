@@ -37,7 +37,7 @@ fun ThemedBackground(
         BackgroundStyle.GRADIENT -> {
             Modifier.background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(tokens.background, tokens.surface)
+                    colors = listOf(tokens.gradientStart, tokens.gradientEnd)
                 )
             )
         }
@@ -81,20 +81,26 @@ fun ThemedBackground(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(80.dp) // Professional depth radius
-                    .alpha(if (isDark) 0.12f else 0.28f),
+                    .blur(tokens.blurStrength.dp)
+                    .alpha(tokens.backgroundOpacity),
                 contentScale = ContentScale.Crop
             )
         }
         
-        // LAYER 3: Adaptive Scrim
-        if (isDark) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.12f))
-            )
-        }
+        // LAYER 3: Adaptive Scrim (Dark Gradient Overlay)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(tokens.surfaceTint)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            tokens.backgroundOverlay.copy(alpha = 0.2f),
+                            tokens.backgroundOverlay.copy(alpha = 0.6f)
+                        )
+                    )
+                )
+        )
         
         content()
     }

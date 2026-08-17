@@ -35,7 +35,17 @@ data class ThemeStyle(
     val motifs: List<String> = emptyList(),
     val accessories: List<String> = emptyList(),
     val animation: AnimationConfig = AnimationConfig(),
-    val iconStyle: String = "default"
+    val iconStyle: String = "default",
+    val backgroundGradient: List<String> = emptyList(),
+    val primaryAccent: String = "#FFFFFF",
+    val secondaryAccent: String = "#FFFFFF",
+    val particleStyle: String = "none",
+    val backgroundOpacity: Float = 0.40f,
+    val heroAlignment: String = "center",
+    val blurStrength: Int = 15,
+    val themeMood: String = "neutral",
+    val gradientStart: String = "#00000000",
+    val gradientEnd: String = "#00000000"
 )
 
 @Serializable
@@ -46,7 +56,10 @@ data class ThemePalette(
     val surface: String,
     val background: String,
     val text: String = "#FFFFFF",
-    val card: String
+    val card: String,
+    val ambientColor: String = "#000000",
+    val backgroundOverlay: String = "#000000",
+    val surfaceTint: String = "#00000000"
 )
 
 @Serializable

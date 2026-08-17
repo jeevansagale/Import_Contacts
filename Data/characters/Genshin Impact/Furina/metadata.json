@@ -22,13 +22,16 @@
     "background": true
   },
   "theme": {
-    "primary": "#FF0000",
-    "secondary": "#00FF00",
-    "accent": "#0000FF",
-    "surface": "#111111",
-    "background": "#222222",
-    "text": "#FFFFFF",
-    "card": "#FFFF00"
+    "primary": "#4A90E2",
+    "secondary": "#76D7EA",
+    "accent": "#FFFFFF",
+    "surface": "#1C2432",
+    "background": "#121823",
+    "text": "#F0F4FA",
+    "card": "#242F40",
+    "ambientColor": "#003366",
+    "backgroundOverlay": "#000000",
+    "surfaceTint": "#00336640"
   },
   "style": {
     "personality": ["Flamboyant", "Dramatic", "Sensitive"],
@@ -39,6 +42,16 @@
       "background": "parallax",
       "accent": "water"
     },
-    "iconStyle": "Regal"
+    "iconStyle": "Regal",
+    "backgroundGradient": ["#001F3F", "#003366"],
+    "primaryAccent": "#4A90E2",
+    "secondaryAccent": "#76D7EA",
+    "particleStyle": "bubbles",
+    "backgroundOpacity": 0.40,
+    "heroAlignment": "center",
+    "blurStrength": 15,
+    "themeMood": "elegant",
+    "gradientStart": "#001F3F",
+    "gradientEnd": "#003366"
   }
 }

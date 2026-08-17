@@ -40,13 +40,26 @@ object ThemeEngine {
 
         // Parse colors from metadata.json
         val theme = metadata.theme
+        val style = metadata.style
         val primary = safeParseColor(theme.primary, baseTokens.primary)
         val secondary = safeParseColor(theme.secondary, baseTokens.secondary)
         val accent = safeParseColor(theme.accent, baseTokens.accent)
-        val surface = safeParseColor(theme.surface, baseTokens.surface)
-        val background = safeParseColor(theme.background, baseTokens.background)
-        val text = safeParseColor(theme.text, baseTokens.onSurface)
-        val card = safeParseColor(theme.card, baseTokens.surface)
+        
+        // Premium Atmosphere
+        val primaryAccent = safeParseColor(style.primaryAccent, baseTokens.primaryAccent)
+        val secondaryAccent = safeParseColor(style.secondaryAccent, baseTokens.secondaryAccent)
+        val ambientColor = safeParseColor(theme.ambientColor, baseTokens.ambientColor)
+        val backgroundOverlay = safeParseColor(theme.backgroundOverlay, baseTokens.backgroundOverlay)
+        val surfaceTint = safeParseColor(theme.surfaceTint, baseTokens.surfaceTint)
+        val backgroundGradient = style.backgroundGradient.map { safeParseColor(it, Color.Transparent) }
+        val gradientStart = safeParseColor(style.gradientStart, baseTokens.gradientStart)
+        val gradientEnd = safeParseColor(style.gradientEnd, baseTokens.gradientEnd)
+
+        // Enforce neutral surfaces and text
+        val surface = baseTokens.surface
+        val background = baseTokens.background
+        val text = baseTokens.onSurface
+        val card = baseTokens.card
 
         // Map metadata colors to ThemeTokens
         return baseTokens.copy(
@@ -60,9 +73,9 @@ object ThemeEngine {
             onBackground = text,
             surface = surface,
             onSurface = text,
-            surfaceVariant = card.copy(alpha = 0.7f),
-            onSurfaceVariant = text.copy(alpha = 0.8f),
-            outline = primary.copy(alpha = 0.4f),
+            surfaceVariant = baseTokens.surfaceVariant,
+            onSurfaceVariant = baseTokens.onSurfaceVariant,
+            outline = baseTokens.outline,
             card = card,
             animationConfig = metadata.style.animation,
             iconStyle = metadata.style.iconStyle,
@@ -71,7 +84,20 @@ object ThemeEngine {
             heroAssetPath = metadata.images.hero,
             portraitAssetPath = metadata.images.portrait,
             backgroundAssetPath = metadata.images.background,
-            isDark = isDark
+            isDark = isDark,
+            // Premium Atmosphere
+            backgroundGradient = backgroundGradient,
+            primaryAccent = primaryAccent,
+            secondaryAccent = secondaryAccent,
+            ambientColor = ambientColor,
+            backgroundOverlay = backgroundOverlay,
+            surfaceTint = surfaceTint,
+            backgroundOpacity = style.backgroundOpacity,
+            heroAlignment = style.heroAlignment,
+            blurStrength = style.blurStrength,
+            themeMood = style.themeMood,
+            gradientStart = gradientStart,
+            gradientEnd = gradientEnd
         )
     }
 
