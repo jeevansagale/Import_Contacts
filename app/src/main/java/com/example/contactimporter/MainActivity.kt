@@ -141,11 +141,11 @@ fun HomeScreen(
                                 checked = themeConfig.themeEnabled,
                                 onCheckedChange = { viewModel.toggleTheme(it) },
                                 modifier = Modifier.scale(0.8f),
-                                thumbContent = {
-                                    if (themeConfig.themeEnabled) {
-                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    thumbContent = {
+                                        if (themeConfig.themeEnabled) {
+                                            Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        }
                                     }
-                                }
                             )
                             Spacer(Modifier.width(8.dp))
                             IconButton(

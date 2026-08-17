@@ -87,14 +87,11 @@ data class ThemeTokens(
     val backgroundAssetPath: String? = null,
     
     // ── Premium Atmosphere ────────────────────────────────────────
-    val backgroundGradient: List<Color> = emptyList(),
-    val primaryAccent: Color,
-    val secondaryAccent: Color,
-    val ambientColor: Color,
+    val glow: Color,
     val backgroundOverlay: Color,
-    val backgroundOpacity: Float = 0.40f,
+    val backgroundOpacity: Float = 0.22f,
     val heroAlignment: String = "center",
-    val blurStrength: Int = 15,
+    val blurStrength: Int = 16,
     val themeMood: String = "neutral",
     val gradientStart: Color,
     val gradientEnd: Color

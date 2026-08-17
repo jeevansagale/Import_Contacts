@@ -71,9 +71,7 @@ object ThemePresets {
         cardStyle = CardStyle.ROUNDED,
         animationStyle = AnimationStyle.NONE,
         backgroundStyle = BackgroundStyle.GRADIENT,
-        primaryAccent = Base.LightPrimary,
-        secondaryAccent = Base.LightSecondary,
-        ambientColor = Color.Black,
+        glow = Base.LightPrimary,
         backgroundOverlay = Color.Black,
         gradientStart = Color.Transparent,
         gradientEnd = Color.Transparent
@@ -119,9 +117,7 @@ object ThemePresets {
         cardStyle = CardStyle.ROUNDED,
         animationStyle = AnimationStyle.NONE,
         backgroundStyle = BackgroundStyle.GRADIENT,
-        primaryAccent = Base.DarkPrimary,
-        secondaryAccent = Base.DarkSecondary,
-        ambientColor = Color.Black,
+        glow = Base.DarkPrimary,
         backgroundOverlay = Color.Black,
         gradientStart = Color.Transparent,
         gradientEnd = Color.Transparent

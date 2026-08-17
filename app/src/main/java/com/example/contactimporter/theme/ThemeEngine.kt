@@ -44,16 +44,13 @@ object ThemeEngine {
         val primary = safeParseColor(theme.primary, baseTokens.primary)
         val secondary = safeParseColor(theme.secondary, baseTokens.secondary)
         val accent = safeParseColor(theme.accent, baseTokens.accent)
+        val glow = safeParseColor(theme.glow, baseTokens.accent)
         
         // Premium Atmosphere
-        val primaryAccent = safeParseColor(style.primaryAccent, baseTokens.primaryAccent)
-        val secondaryAccent = safeParseColor(style.secondaryAccent, baseTokens.secondaryAccent)
-        val ambientColor = safeParseColor(theme.ambientColor, baseTokens.ambientColor)
         val backgroundOverlay = safeParseColor(theme.backgroundOverlay, baseTokens.backgroundOverlay)
         val surfaceTint = safeParseColor(theme.surfaceTint, baseTokens.surfaceTint)
-        val backgroundGradient = style.backgroundGradient.map { safeParseColor(it, Color.Transparent) }
-        val gradientStart = safeParseColor(style.gradientStart, baseTokens.gradientStart)
-        val gradientEnd = safeParseColor(style.gradientEnd, baseTokens.gradientEnd)
+        val gradientStart = safeParseColor(theme.gradient.start, baseTokens.gradientStart)
+        val gradientEnd = safeParseColor(theme.gradient.end, baseTokens.gradientEnd)
 
         // Enforce neutral surfaces and text
         val surface = baseTokens.surface
@@ -86,10 +83,7 @@ object ThemeEngine {
             backgroundAssetPath = metadata.images.background,
             isDark = isDark,
             // Premium Atmosphere
-            backgroundGradient = backgroundGradient,
-            primaryAccent = primaryAccent,
-            secondaryAccent = secondaryAccent,
-            ambientColor = ambientColor,
+            glow = glow,
             backgroundOverlay = backgroundOverlay,
             surfaceTint = surfaceTint,
             backgroundOpacity = style.backgroundOpacity,

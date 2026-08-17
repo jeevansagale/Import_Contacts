@@ -18,7 +18,6 @@
 
 # Keep kotlinx.serialization classes
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod
--keepclassmembers class kotlinx.serialization.** { *; }
 -keepclassmembers class * {
     @kotlinx.serialization.Serializable *;
 }

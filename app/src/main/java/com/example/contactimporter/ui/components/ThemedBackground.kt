@@ -8,21 +8,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.example.contactimporter.data.BackgroundStyle
 import com.example.contactimporter.ui.AsyncUriImage
+import com.example.contactimporter.theme.LocalThemeTokens
 
 /**
  * REDESIGN: First-Principles Atmospheric Background.
  * 
  * Implements a three-layer depth rendering system:
- * 1. Palette Foundation: Thematic gradients grounded in character colors.
- * 2. Gaussian Atmosphere: Heavy Gaussian blur (80.dp) of assets for character immersion.
- * 3. Legibility Scrim: Adaptive contrast control for Material 3 expressive legibility.
+ * 1. Background Artwork: Full-screen background artwork.
+ * 2. Gradient Overlay: Top (Transparent) -> Middle (Slight tint) -> Bottom (Dark Surface).
+ * 3. Ambient Character Glow: Large radial gradient behind UI.
  */
 @Composable
 fun ThemedBackground(
@@ -30,50 +30,13 @@ fun ThemedBackground(
     content: @Composable () -> Unit
 ) {
     val tokens = LocalThemeTokens.current
-    val isDark = isSystemInDarkTheme()
+    val density = LocalDensity.current
+    val glowRadius = with(density) { 250.dp.toPx() }
     
-    // LAYER 1: Foundation (Mood Mesh)
-    val baseModifier = when (tokens.backgroundStyle) {
-        BackgroundStyle.GRADIENT -> {
-            Modifier.background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(tokens.gradientStart, tokens.gradientEnd)
-                )
-            )
-        }
-        BackgroundStyle.RIPPLE -> {
-            Modifier.background(
-                brush = Brush.radialGradient(
-                    colors = listOf(tokens.primary.copy(alpha = 0.15f), tokens.background)
-                )
-            )
-        }
-        BackgroundStyle.VIGNETTE -> {
-            Modifier.background(
-                brush = Brush.radialGradient(
-                    radius = 2.5f,
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f))
-                )
-            ).background(tokens.background)
-        }
-        BackgroundStyle.GLOW -> {
-            Modifier.background(
-                brush = Brush.radialGradient(
-                    center = Offset(0.5f, 0.25f), // Backlight aligned with Carousel
-                    radius = 1.0f,
-                    colors = listOf(tokens.primary.copy(alpha = 0.22f), tokens.background)
-                )
-            )
-        }
-        else -> Modifier.background(tokens.background)
-    }
-
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .then(baseModifier)
+        modifier = modifier.fillMaxSize().background(tokens.background)
     ) {
-        // LAYER 2: Atmosphere (Immersive Atmospheric Depth)
+        // LAYER 1: Background Artwork
         val bgPath = tokens.backgroundAssetPath ?: tokens.customBackgroundUri
         if (bgPath != null) {
             AsyncUriImage(
@@ -87,17 +50,29 @@ fun ThemedBackground(
             )
         }
         
-        // LAYER 3: Adaptive Scrim (Dark Gradient Overlay)
+        // LAYER 2: Gradient Overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(tokens.surfaceTint)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
+                            Color.Transparent,
                             tokens.backgroundOverlay.copy(alpha = 0.2f),
                             tokens.backgroundOverlay.copy(alpha = 0.6f)
                         )
+                    )
+                )
+        )
+
+        // LAYER 3: Ambient Character Glow
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(tokens.glow.copy(alpha = 0.12f), Color.Transparent),
+                        radius = glowRadius
                     )
                 )
         )

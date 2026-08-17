@@ -30,22 +30,23 @@ data class AssetAvailability(
 )
 
 @Serializable
+data class Gradient(
+    val start: String,
+    val end: String
+)
+
+@Serializable
 data class ThemeStyle(
     val personality: List<String> = emptyList(),
     val motifs: List<String> = emptyList(),
     val accessories: List<String> = emptyList(),
     val animation: AnimationConfig = AnimationConfig(),
     val iconStyle: String = "default",
-    val backgroundGradient: List<String> = emptyList(),
-    val primaryAccent: String = "#FFFFFF",
-    val secondaryAccent: String = "#FFFFFF",
     val particleStyle: String = "none",
-    val backgroundOpacity: Float = 0.40f,
     val heroAlignment: String = "center",
-    val blurStrength: Int = 15,
     val themeMood: String = "neutral",
-    val gradientStart: String = "#00000000",
-    val gradientEnd: String = "#00000000"
+    val blur: Int = 16,
+    val backgroundOpacity: Float = 0.22f
 )
 
 @Serializable
@@ -53,13 +54,10 @@ data class ThemePalette(
     val primary: String,
     val secondary: String,
     val accent: String,
-    val surface: String,
-    val background: String,
-    val text: String = "#FFFFFF",
-    val card: String,
-    val ambientColor: String = "#000000",
-    val backgroundOverlay: String = "#000000",
-    val surfaceTint: String = "#00000000"
+    val glow: String,
+    val backgroundOverlay: String,
+    val surfaceTint: String,
+    val gradient: Gradient
 )
 
 @Serializable
