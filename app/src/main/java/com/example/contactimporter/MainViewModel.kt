@@ -48,6 +48,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     init {
         Log.d("MainViewModel", "ViewModel created. Characters: ${availableCharacters.value.size}")
+        viewModelScope.launch {
+            themeRepository.loadCharacters()
+        }
     }
 
     fun getActiveCharacter() = themeRepository.getActiveCharacter()
