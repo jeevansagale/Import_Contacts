@@ -92,6 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val result = withContext(Dispatchers.IO) {
                     ContactParser.parseContacts(json)
+
                 }
                 handleParseResult(result)
             } catch (e: Exception) {
@@ -147,17 +148,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val entry = currentEntries[currentIndex]
         val name = entry.name ?: ""
         val number = entry.number ?: ""
+        val normalizedNumber = ContactsProviderHelper.normalizePhoneNumber(number)
 
         viewModelScope.launch {
-            val existing = ContactsProviderHelper.getExistingContactByNumber(getApplication(), number)
+            // Try to find existing contact using normalized number
+            val existing = ContactsProviderHelper.getExistingContactByNumber(getApplication(), normalizedNumber)
             
-            if (existing != null) {
+            // Verify match after normalization
+            val isMatch = existing != null && 
+                          ContactsProviderHelper.normalizePhoneNumber(existing.number) == normalizedNumber
+
+            if (isMatch) {
                 if (applyToAllDecision != null) {
-                    handleResolution(applyToAllDecision!!, existing.id)
+                    handleResolution(applyToAllDecision!!, existing!!.id)
                 } else {
                     _importState.value = ImportState.Conflict(
                         ContactConflict(
-                            existingContactId = existing.id,
+                            existingContactId = existing!!.id,
                             existingName = existing.name,
                             existingNumber = existing.number,
                             incomingName = name,

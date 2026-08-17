@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.serialization.json.*
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.nio.charset.Charsets
 
 object ContactParser {
     private const val TAG = "ContactParser"
@@ -42,19 +43,15 @@ object ContactParser {
         val failures = mutableListOf<ImportFailure>()
         var totalCount = 0
 
-        val jsonArray = when (root) {
-            is JsonArray -> root
-            is JsonObject -> JsonArray(listOf(root))
-            else -> {
-                return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Root must be an array or object")))
-            }
-        }
+        // Extract contacts array from various root structures
+        val jsonArray = extractContactsArray(root)
+            ?: return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Unsupported JSON structure: expected array or object with 'contacts', 'data', or 'items' key")))
 
         totalCount = jsonArray.size
 
-        for (element in jsonArray) {
+        for ((index, element) in jsonArray.withIndex()) {
             if (element !is JsonObject) {
-                failures.add(ImportFailure(null, null, "Entry is not a JSON object"))
+                failures.add(ImportFailure(null, null, "Contact at index $index is not a JSON object"))
                 continue
             }
 
@@ -64,8 +61,11 @@ object ContactParser {
                 ?: element["Name"]?.jsonPrimitive?.contentOrNull
                 ?: element["displayName"]?.jsonPrimitive?.contentOrNull
 
-            // Extract NUMBER (case-insensitive support, handles String and Number types)
+            // Extract NUMBER - support both "number" and "phone" fields
+            // Priority: number > phone
             val numberElement = element["NUMBER"] ?: element["number"] ?: element["Number"]
+                ?: element["PHONE"] ?: element["phone"] ?: element["Phone"]
+            
             val number = when {
                 numberElement == null -> null
                 numberElement is JsonPrimitive -> numberElement.content // content handles both "123" and 123
@@ -76,11 +76,11 @@ object ContactParser {
             val trimmedNumber = number?.trim()
 
             if (trimmedName.isNullOrBlank() && trimmedNumber.isNullOrBlank()) {
-                failures.add(ImportFailure(trimmedName, trimmedNumber, "Empty record"))
+                failures.add(ImportFailure(trimmedName, trimmedNumber, "Contact at index $index: Empty record"))
             } else if (trimmedName.isNullOrBlank()) {
-                failures.add(ImportFailure(trimmedName, trimmedNumber, "NAME is required"))
+                failures.add(ImportFailure(trimmedName, trimmedNumber, "Contact at index $index: NAME is required"))
             } else if (trimmedNumber.isNullOrBlank()) {
-                failures.add(ImportFailure(trimmedName, trimmedNumber, "NUMBER is required"))
+                failures.add(ImportFailure(trimmedName, trimmedNumber, "Contact at index $index: NUMBER or PHONE is required"))
             } else {
                 validEntries.add(ContactImportEntry(trimmedName, trimmedNumber))
             }
@@ -94,5 +94,30 @@ object ContactParser {
             validEntries = validEntries,
             failures = failures
         )
+    }
+
+    /**
+     * Extracts the contacts array from various supported JSON root structures.
+     * Supported formats:
+     * - Root array: [ {...}, {...} ]
+     * - Object with "contacts" key: { "contacts": [...] }
+     * - Object with "data" key: { "data": [...] }
+     * - Object with "items" key: { "items": [...] }
+     */
+    private fun extractContactsArray(root: JsonElement): JsonArray? = when (root) {
+        is JsonArray -> root
+        is JsonObject -> {
+            // Check for supported wrapper keys in order of preference
+            val wrapperKeys = listOf("contacts", "data", "items")
+            for (key in wrapperKeys) {
+                val element = root[key]
+                if (element is JsonArray) {
+                    return element
+                }
+            }
+            // If object has no recognized wrapper, treat as single contact
+            JsonArray(listOf(root))
+        }
+        else -> null
     }
 }
