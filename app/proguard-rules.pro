@@ -12,10 +12,13 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep attributes for better stack traces in release builds
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep kotlinx.serialization classes
+-keepattributes *Annotation*,InnerClasses,EnclosingMethod
+-keepclassmembers class kotlinx.serialization.** { *; }
+-keepclassmembers class * {
+    @kotlinx.serialization.Serializable *;
+}

@@ -4,7 +4,7 @@ import android.util.Log
 import kotlinx.serialization.json.*
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.nio.charset.Charsets
+import kotlin.text.Charsets
 
 object ContactParser {
     private const val TAG = "ContactParser"
@@ -17,13 +17,14 @@ object ContactParser {
     )
 
     fun parseContacts(inputStream: InputStream): ParseResult {
-        val text = try {
-            InputStreamReader(inputStream, Charsets.UTF_8).readText()
+        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+        val root = try {
+            json.decodeFromStream<JsonElement>(inputStream)
         } catch (e: Exception) {
-            Log.e(TAG, "Error reading stream", e)
-            return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "File unreadable: ${e.message}")))
+            Log.e(TAG, "Invalid JSON structure", e)
+            return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Invalid JSON format: ${e.message}")))
         }
-        return parseContacts(text)
+        return parseContacts(root)
     }
 
     fun parseContacts(text: String): ParseResult {
@@ -39,9 +40,13 @@ object ContactParser {
             return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Invalid JSON format: ${e.message}")))
         }
 
+        return parseContacts(root)
+    }
+
+    private fun parseContacts(root: JsonElement): ParseResult {
         val validEntries = mutableListOf<ContactImportEntry>()
         val failures = mutableListOf<ImportFailure>()
-        var totalCount = 0
+        var totalCount: Int
 
         // Extract contacts array from various root structures
         val jsonArray = extractContactsArray(root)
@@ -66,9 +71,9 @@ object ContactParser {
             val numberElement = element["NUMBER"] ?: element["number"] ?: element["Number"]
                 ?: element["PHONE"] ?: element["phone"] ?: element["Phone"]
             
-            val number = when {
-                numberElement == null -> null
-                numberElement is JsonPrimitive -> numberElement.content // content handles both "123" and 123
+            val number = when (numberElement) {
+                null -> null
+                is JsonPrimitive -> numberElement.content
                 else -> null
             }
 
@@ -104,20 +109,22 @@ object ContactParser {
      * - Object with "data" key: { "data": [...] }
      * - Object with "items" key: { "items": [...] }
      */
-    private fun extractContactsArray(root: JsonElement): JsonArray? = when (root) {
-        is JsonArray -> root
-        is JsonObject -> {
-            // Check for supported wrapper keys in order of preference
-            val wrapperKeys = listOf("contacts", "data", "items")
-            for (key in wrapperKeys) {
-                val element = root[key]
-                if (element is JsonArray) {
-                    return element
+    private fun extractContactsArray(root: JsonElement): JsonArray? {
+        return when (root) {
+            is JsonArray -> root
+            is JsonObject -> {
+                // Check for supported wrapper keys in order of preference
+                val wrapperKeys = listOf("contacts", "data", "items")
+                for (key in wrapperKeys) {
+                    val element = root[key]
+                    if (element is JsonArray) {
+                        return element
+                    }
                 }
+                // If object has no recognized wrapper, treat as single contact
+                JsonArray(listOf(root))
             }
-            // If object has no recognized wrapper, treat as single contact
-            JsonArray(listOf(root))
+            else -> null
         }
-        else -> null
     }
 }

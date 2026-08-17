@@ -1,278 +1,167 @@
-# Contact Importer
+# CONTACT IMPORTER
 
-A premium Android application that transforms contact importing into an immersive, character-themed experience.
+**A lightweight, customizable Android contact importer built for speed, reliability, and a polished user experience.**
 
-Unlike traditional contact import utilities, Contact Importer combines a modern Material 3 interface, dynamic theming, high-performance animations, and an extensible character library to create a polished experience while maintaining reliable contact import functionality.
-
----
-
-## Overview
-
-Contact Importer is built around a modular architecture that separates data, theming, and UI into independent components. Characters are defined entirely through metadata and assets, allowing new themes to be added without modifying application logic.
-
-The project demonstrates modern Android development practices using Jetpack Compose, Material 3, MVVM architecture, and a data-driven design.
+Import contacts from JSON files or pasted JSON directly into your Android Contacts.
 
 ---
 
 ## Features
 
-### Dynamic Character Library
-
-- Metadata-driven character system
-- Runtime character discovery
-- Registry-based loading
-- Series categorization
-- Asset validation
-- Extensible architecture
-
-### Character Themes
-
-Every character includes:
-
-- Hero artwork
-- Portrait artwork
-- Background artwork
-- Custom color palette
-- Typography configuration
-- Animation profile
-- Theme metadata
-
-Current supported franchises include:
-
-- Genshin Impact
-- Zenless Zone Zero
-- Chainsaw Man
-- Bleach
-- Attack on Titan
+* **JSON Import** — File picker or paste JSON directly.
+* **Flexible Formats** — Supports root arrays and `contacts`, `data`, and `items` wrappers.
+* **Flexible Fields** — Accepts both `number` and `phone`.
+* **Flexible Types** — Phone values can be JSON strings or numbers.
+* **Duplicate Detection** — Detects duplicates using normalized phone numbers.
+* **Fault-Tolerant Parsing** — Invalid records don't stop valid contacts from importing.
+* **Batch Import** — Designed for large contact lists without freezing the UI.
+* **Character Themes** — Customizable character-based UI and artwork.
+* **Local Processing** — No account, backend, Firebase, or cloud processing required.
 
 ---
 
-## Contact Import
+## JSON Support
 
-- JSON-based contact importing
-- Validation before import
-- Duplicate handling
-- Error reporting
-- Import verification
-- Android Contacts Provider integration
+### Recommended
 
----
-
-## User Interface
-
-Designed using modern Android design principles.
-
-Highlights include:
-
-- Material 3
-- Dynamic color system
-- Animated transitions
-- Character-aware backgrounds
-- Responsive layouts
-- High-performance image loading
-- Theme-aware components
-
----
-
-## Architecture
-
+```json
+[
+  {
+    "name": "Furina",
+    "number": "+919876543210"
+  },
+  {
+    "name": "Raiden Shogun",
+    "phone": "+919876543211"
+  }
+]
 ```
-app
+
+The following are also supported:
+
+```text
+Root Array
+├── number / phone
+├── String / Number values
+│
+Wrapped Object
+├── contacts
 ├── data
-│   ├── Character Registry
-│   ├── Metadata Loader
-│   ├── Contact Parser
-│   ├── Theme Repository
-│   └── Models
-│
-├── theme
-│   ├── Theme Engine
-│   ├── Theme Tokens
-│   └── Theme Presets
-│
-├── ui
-│   ├── Components
-│   ├── Animations
-│   ├── Backgrounds
-│   └── Image Helpers
-│
-└── Main
-    ├── Activity
-    └── ViewModel
+└── items
 ```
 
-The application follows the MVVM pattern with a clean separation between business logic, presentation, and data layers.
+Phone numbers are converted to **String internally** so values such as `+91` and leading zeros are preserved.
 
 ---
 
-## Character System
+## Import Pipeline
 
-Characters are stored externally under the `Data/characters` directory.
-
-Example:
-
+```text
+JSON
+ ↓
+Format Detection
+ ↓
+Parsing & Normalization
+ ↓
+Validation
+ ↓
+Duplicate Detection
+ ↓
+Conflict Resolution
+ ↓
+Batch Import
+ ↓
+Android Contacts
 ```
-Data/
-└── characters/
-    └── Genshin Impact/
-        └── Furina/
-            ├── metadata.json
-            └── images/
-                ├── hero.jpg
-                ├── portrait.jpg
-                └── background.jpg
-```
 
-Adding a new character requires only:
-
-1. Creating a new folder.
-2. Adding the required images.
-3. Providing a valid `metadata.json`.
-4. Updating the registry.
-
-No application code changes are required.
+A malformed contact is skipped instead of causing the entire import to fail.
 
 ---
 
-## Technology Stack
+## UI / UX
 
-### Language
+The interface follows a **clean Material 3 design** with character theming layered on top.
 
-- Kotlin
+Design priorities:
 
-### UI
+* Clear visual hierarchy
+* Minimal clutter
+* Responsive interactions
+* Consistent spacing and typography
+* Lightweight animations
+* Accessible states and feedback
+* Character artwork without sacrificing usability
 
-- Jetpack Compose
-- Material 3
-
-### Architecture
-
-- MVVM
-- Repository Pattern
-- StateFlow
-
-### Android APIs
-
-- Contacts Provider
-- Runtime Permissions
-- Android Resources
-
-### Build System
-
-- Gradle Kotlin DSL
-
----
-
-## Project Structure
-
-```
-Data/
-    characters/
-        registry.json
-
-app/
-    data/
-    theme/
-    ui/
-    MainActivity.kt
-    MainViewModel.kt
-```
-
----
-
-## Testing
-
-The project includes:
-
-- Unit tests
-- Contact parser tests
-- Theme validation tests
-- Android instrumentation tests
-- Import verification tests
-
----
-
-## Design Goals
-
-The project focuses on:
-
-- Maintainability
-- Scalability
-- Extensibility
-- Performance
-- Separation of concerns
-- Modern Android architecture
-- Clean UI implementation
+The theme system is completely separated from the import engine, so changing characters cannot affect import reliability.
 
 ---
 
 ## Performance
 
-The application is designed to:
+CONTACT IMPORTER is optimized for both **performance and storage**, not just image size.
 
-- Load character metadata dynamically
-- Prevent malformed metadata from crashing the application
-- Minimize unnecessary recomposition
-- Reduce runtime allocations
-- Support future expansion without architectural changes
+### Targets
 
----
+| Metric         |                   Goal |
+| -------------- | ---------------------: |
+| APK            |     **25–35 MB ideal** |
+| APK maximum    |             **<60 MB** |
+| UI             |             **60 FPS** |
+| Large imports  | **No ANR / UI freeze** |
+| Target devices |         **2–4 GB RAM** |
 
-## Future Roadmap
+Optimization focuses on:
 
-Planned improvements include:
-
-- Additional character libraries
-- Search and filtering
-- Theme customization
-- Cloud synchronization
-- Asset packs
-- Import history
-- Backup and restore
-- Localization support
-
----
-
-## Requirements
-
-- Android Studio
-- Android SDK
-- Gradle
-- Android device running Android 8.0 (API 26) or later
+* Lazy loading
+* Efficient JSON parsing
+* Batch contact operations
+* Memory-conscious image loading
+* R8 and resource shrinking
+* Dependency minimization
+* Low unnecessary background work
+* Startup and rendering performance
 
 ---
 
-## Building
+## Tech Stack
 
-Clone the repository:
+* **Kotlin**
+* **Jetpack Compose**
+* **Material 3**
+* **Kotlin Coroutines**
+* **kotlinx.serialization**
+* **Android Contacts Provider**
+* **Storage Access Framework**
 
-```bash
-git clone https://github.com/<username>/Contact_Importer.git
+No backend is required for core functionality.
+
+---
+
+## Project Structure
+
+```text
+app/
+└── src/main/
+    ├── java/
+    │   └── com/example/contactimporter/
+    │       ├── data/
+    │       ├── importer/
+    │       ├── contacts/
+    │       ├── theme/
+    │       └── ui/
+    │
+    ├── assets/
+    │   └── characters/
+    │
+    └── res/
 ```
 
-Open the project in Android Studio.
-
-Build using Gradle:
-
-```bash
-./gradlew assembleDebug
-```
-
-Or use Android Studio's build system.
-
 ---
 
-## License
+## Design Philosophy
 
-This project is intended for educational and portfolio purposes.
+> **Fast enough for low-end devices.
+> Flexible enough for real-world JSON.
+> Polished enough to feel like a finished product.**
 
-Character names, artwork, and related intellectual property belong to their respective owners.
-Only the application implementation, architecture, and source code are part of this repository.
-
----
-
-## Acknowledgements
-
-Built using the Android Jetpack ecosystem and modern Android development best practices.
-
-Special thanks to the developers and maintainers of Kotlin, Jetpack Compose, Material 3, and the Android Open Source Project for the tools and frameworks that made this project possible.
+CONTACT IMPORTER aims to combine a lightweight Android architecture with a refined, customizable interface without letting visual features compromise performance or reliability.

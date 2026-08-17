@@ -6,6 +6,7 @@ import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class ThemeRepository(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
@@ -19,11 +20,13 @@ class ThemeRepository(private val context: Context) {
     val characterLoadError: String? get() = CharacterMetadataLoader.lastError
 
     init {
-        // Load characters on init (synchronous on main thread is fine for a small library)
-        Log.d("ThemeRepository", "Loading character library...")
-        val characters = CharacterMetadataLoader.loadRegistry(context)
-        _availableCharacters.value = characters
-        Log.d("ThemeRepository", "Character library loaded: ${characters.size} characters")
+        // Load characters asynchronously to avoid blocking main thread
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            Log.d("ThemeRepository", "Loading character library...")
+            val characters = CharacterMetadataLoader.loadRegistry(context)
+            _availableCharacters.value = characters
+            Log.d("ThemeRepository", "Character library loaded: ${characters.size} characters")
+        }
     }
 
     fun updateConfig(config: ThemeConfig) {
