@@ -2,6 +2,7 @@ package com.example.contactimporter.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,12 +13,17 @@ class ThemeRepository(private val context: Context) {
     private val _themeConfig = MutableStateFlow(loadConfig())
     val themeConfig: StateFlow<ThemeConfig> = _themeConfig.asStateFlow()
 
-    private var _availableCharacters = listOf<CharacterMetadata>()
-    val availableCharacters: List<CharacterMetadata> get() = _availableCharacters
+    private val _availableCharacters = MutableStateFlow<List<CharacterMetadata>>(emptyList())
+    val availableCharacters: StateFlow<List<CharacterMetadata>> = _availableCharacters.asStateFlow()
+
+    val characterLoadError: String? get() = CharacterMetadataLoader.lastError
 
     init {
-        // Task 13: Metadata cached in repository after initial load
-        _availableCharacters = CharacterMetadataLoader.loadRegistry(context)
+        // Load characters on init (synchronous on main thread is fine for a small library)
+        Log.d("ThemeRepository", "Loading character library...")
+        val characters = CharacterMetadataLoader.loadRegistry(context)
+        _availableCharacters.value = characters
+        Log.d("ThemeRepository", "Character library loaded: ${characters.size} characters")
     }
 
     fun updateConfig(config: ThemeConfig) {
@@ -27,9 +33,9 @@ class ThemeRepository(private val context: Context) {
 
     fun getActiveCharacter(): CharacterMetadata? {
         val id = _themeConfig.value.characterId
-        return _availableCharacters.find { it.id == id }
+        return _availableCharacters.value.find { it.id == id }
     }
-    
+
     private fun loadConfig(): ThemeConfig {
         return ThemeConfig(
             characterId = prefs.getString("characterId", "default") ?: "default",
@@ -43,7 +49,7 @@ class ThemeRepository(private val context: Context) {
             selectedBackgroundStyle = prefs.getString("selectedBackgroundStyle", null)?.let { BackgroundStyle.valueOf(it) }
         )
     }
-    
+
     private fun saveConfig(config: ThemeConfig) {
         prefs.edit().apply {
             putString("characterId", config.characterId)

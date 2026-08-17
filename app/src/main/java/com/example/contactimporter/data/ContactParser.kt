@@ -22,7 +22,10 @@ object ContactParser {
             Log.e(TAG, "Error reading stream", e)
             return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "File unreadable: ${e.message}")))
         }
+        return parseContacts(text)
+    }
 
+    fun parseContacts(text: String): ParseResult {
         if (text.isBlank()) {
             return ParseResult(0, 0, emptyList(), emptyList())
         }

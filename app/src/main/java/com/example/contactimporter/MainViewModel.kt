@@ -16,6 +16,7 @@ import com.example.contactimporter.data.ConflictResolution
 import com.example.contactimporter.data.CharacterMetadata
 import com.example.contactimporter.data.CharacterMetadataLoader
 import kotlinx.coroutines.Dispatchers
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -41,9 +42,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val themeRepository = ThemeRepository(application)
     val themeConfig: StateFlow<ThemeConfig> = themeRepository.themeConfig
     
-    // Task 13: Metadata cached in repository
-    val availableCharacters: List<CharacterMetadata> = themeRepository.availableCharacters
-    val characterLoadError: String? = CharacterMetadataLoader.lastError
+    // Metadata as StateFlow for reactive Compose UI
+    val availableCharacters: StateFlow<List<CharacterMetadata>> = themeRepository.availableCharacters
+    val characterLoadError: String? = themeRepository.characterLoadError
+    
+    init {
+        Log.d("MainViewModel", "ViewModel created. Characters: ${availableCharacters.value.size}")
+    }
 
     fun getActiveCharacter() = themeRepository.getActiveCharacter()
 
@@ -74,28 +79,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         ContactParser.parseContacts(it)
                     }
                 }
-                
-                if (result == null || (result.validEntries.isEmpty() && result.failures.isNotEmpty())) {
-                    val errorMsg = result?.failures?.firstOrNull()?.reason ?: "No valid contacts found in the file."
-                    _importState.value = ImportState.Error(errorMsg)
-                } else if (result.validEntries.isEmpty()) {
-                    _importState.value = ImportState.Error("The selected file contains no contacts.")
-                } else {
-                    currentEntries = result.validEntries
-                    totalRecords = result.total
-                    invalidRecords = result.failures.size
-                    parserFailures = result.failures
-                    
-                    _importState.value = ImportState.ReadyToImport(
-                        entries = result.validEntries,
-                        total = result.total,
-                        validCount = result.validEntries.size,
-                        invalidCount = result.failures.size
-                    )
-                }
+                handleParseResult(result)
             } catch (e: Exception) {
                 _importState.value = ImportState.Error("Failed to read file: ${e.message}")
             }
+        }
+    }
+
+    fun parseJsonString(json: String) {
+        _importState.value = ImportState.Parsing
+        viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    ContactParser.parseContacts(json)
+                }
+                handleParseResult(result)
+            } catch (e: Exception) {
+                _importState.value = ImportState.Error("Failed to parse JSON: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleParseResult(result: ContactParser.ParseResult?) {
+        if (result == null || (result.validEntries.isEmpty() && result.failures.isNotEmpty())) {
+            val errorMsg = result?.failures?.firstOrNull()?.reason ?: "No valid contacts found."
+            _importState.value = ImportState.Error(errorMsg)
+        } else if (result.validEntries.isEmpty()) {
+            _importState.value = ImportState.Error("The input contains no contacts.")
+        } else {
+            currentEntries = result.validEntries
+            totalRecords = result.total
+            invalidRecords = result.failures.size
+            parserFailures = result.failures
+            
+            _importState.value = ImportState.ReadyToImport(
+                entries = result.validEntries,
+                total = result.total,
+                validCount = result.validEntries.size,
+                invalidCount = result.failures.size
+            )
         }
     }
 

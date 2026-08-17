@@ -12,7 +12,7 @@ object CharacterMetadataLoader {
 
     private val json = Json {
         ignoreUnknownKeys = true
-        isLenient = false // Requirement: strict parsing to catch errors
+        isLenient = false
     }
 
     var lastError: String? = null
@@ -20,26 +20,32 @@ object CharacterMetadataLoader {
 
     /**
      * Loads the character library from assets with high fault tolerance and detailed diagnostics.
+     * One invalid character must NEVER prevent the rest from loading.
      */
     fun loadRegistry(context: Context): List<CharacterMetadata> {
         lastError = null
         val characters = mutableListOf<CharacterMetadata>()
         val skipped = mutableListOf<Pair<String, String>>()
-        
-        Log.d(TAG, "Loading registry...")
-        
+
+        Log.d(TAG, "=== CHARACTER LIBRARY LOAD START ===")
+        Log.d(TAG, "Registry path: assets/$ASSET_ROOT/registry.json")
+
+        // 1. Load registry.json
         val registryPath = "$ASSET_ROOT/registry.json"
         val registryText = try {
             context.assets.open(registryPath).bufferedReader().use { it.readText() }
         } catch (e: Exception) {
-            val msg = "Registry not found: assets/$registryPath"
+            val msg = "Registry not found: assets/$registryPath — ${e.message}"
             Log.e(TAG, msg, e)
             lastError = msg
+            Log.e(TAG, "=== CHARACTER LIBRARY LOAD FAILED ===")
             return emptyList()
         }
 
-        Log.d(TAG, "✓ registry.json loaded")
+        Log.d(TAG, "Registry found: YES")
+        Log.d(TAG, "Registry size: ${registryText.length} bytes")
 
+        // 2. Parse registry.json
         val registryJson = try {
             json.parseToJsonElement(registryText).jsonObject
         } catch (e: Exception) {
@@ -47,52 +53,73 @@ object CharacterMetadataLoader {
             Log.e(TAG, msg)
             e.printStackTrace()
             lastError = msg
+            Log.e(TAG, "=== CHARACTER LIBRARY LOAD FAILED ===")
             return emptyList()
         }
 
-        val characterEntries = registryJson["characters"]?.jsonArray ?: return emptyList()
-        val totalInRegistry = characterEntries.size
+        val characterEntries = registryJson["characters"]?.jsonArray
+        if (characterEntries == null) {
+            val msg = "Registry.json missing 'characters' array"
+            Log.e(TAG, msg)
+            lastError = msg
+            Log.e(TAG, "=== CHARACTER LIBRARY LOAD FAILED ===")
+            return emptyList()
+        }
 
+        val totalInRegistry = characterEntries.size
+        Log.d(TAG, "Registry entries: $totalInRegistry")
+        Log.d(TAG, "")
+
+        // 3. Load each character
         characterEntries.forEach { element ->
             val path = element.jsonObject["path"]?.jsonPrimitive?.content ?: "unknown"
             val charId = element.jsonObject["id"]?.jsonPrimitive?.content ?: "unknown"
-            
-            Log.d(TAG, "-----------------------------------")
-            Log.d(TAG, "Loading $path...")
-            
+
+            Log.d(TAG, "--- Loading: $charId ---")
+            Log.d(TAG, "  path = $path")
+
             val charFolder = "$ASSET_ROOT/$path"
             val metadataPath = "$charFolder/metadata.json"
-            
+
             try {
-                // 1. Metadata fetch
+                // 3a. Fetch metadata file
                 val metadataText = try {
                     context.assets.open(metadataPath).bufferedReader().use { it.readText() }
                 } catch (e: IOException) {
-                    Log.e(TAG, "Failed finding metadata: $metadataPath")
+                    Log.e(TAG, "  metadata: MISSING ($metadataPath)")
+                    Log.e(TAG, "  Exception: ${e.message}")
                     skipped.add(charId to "Missing metadata.json")
                     return@forEach
                 }
-                Log.d(TAG, "✓ metadata found")
+                Log.d(TAG, "  metadata: FOUND (${metadataText.length} bytes)")
+                Log.d(TAG, "  first 200 chars: ${metadataText.take(200)}")
 
-                // 2. Metadata parse & Validation against CharacterMetadata data class
+                // 3b. Parse metadata
                 val metadata = try {
                     json.decodeFromString<CharacterMetadata>(metadataText)
                 } catch (e: SerializationException) {
-                    val errorMsg = "Failed parsing:\n$path/metadata.json\n\nReason:\n${e.message}"
-                    Log.e(TAG, errorMsg)
+                    Log.e(TAG, "  metadata: PARSE FAILED")
+                    Log.e(TAG, "  Reason: ${e.message}")
                     e.printStackTrace()
                     skipped.add(charId to "Parse Error")
                     return@forEach
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed parsing:\n$path/metadata.json")
-                    Log.e(TAG, "Reason: ${e.message}")
+                    Log.e(TAG, "  metadata: PARSE FAILED (unexpected)")
+                    Log.e(TAG, "  Reason: ${e.message}")
                     e.printStackTrace()
                     skipped.add(charId to "Parse Error")
                     return@forEach
                 }
-                Log.d(TAG, "✓ theme parsed")
+                Log.d(TAG, "  metadata: PARSED OK (id=${metadata.id}, name=${metadata.name})")
 
-                // 3. Image validation
+                // 3c. Validate required fields
+                if (metadata.id.isBlank() || metadata.name.isBlank()) {
+                    Log.e(TAG, "  metadata: VALIDATION FAILED (empty id or name)")
+                    skipped.add(charId to "Validation Error (empty id/name)")
+                    return@forEach
+                }
+
+                // 3d. Resolve image paths (absolute asset URIs)
                 val resolvedMetadata = metadata.copy(
                     images = metadata.images.copy(
                         hero = "file:///android_asset/$charFolder/${metadata.images.hero}",
@@ -101,39 +128,59 @@ object CharacterMetadataLoader {
                     )
                 )
 
-                if (validateImages(context, resolvedMetadata)) {
-                    Log.d(TAG, "✓ images verified")
-                    characters.add(resolvedMetadata)
-                    Log.d(TAG, "Success: ${resolvedMetadata.name}")
+                // 3e. Check images (advisory only — do NOT exclude character)
+                val missingImages = checkImages(context, resolvedMetadata)
+                if (missingImages.isNotEmpty()) {
+                    Log.w(TAG, "  images: MISSING ${missingImages.joinToString(", ")}")
+                    Log.w(TAG, "  (character will still be included)")
                 } else {
-                    Log.e(TAG, "Validation failed for $charId (Missing images)")
-                    skipped.add(resolvedMetadata.name to "Missing Images")
+                    Log.d(TAG, "  images: ALL VERIFIED")
                 }
+
+                // 3f. Add character to list
+                characters.add(resolvedMetadata)
+                Log.d(TAG, "  status: LOADED ✓")
+
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error loading character at $path", e)
+                Log.e(TAG, "  UNEXPECTED ERROR loading $path", e)
                 e.printStackTrace()
                 skipped.add(charId to "Unexpected Error")
             }
         }
-        
+
+        // 4. Final summary
+        Log.d(TAG, "")
         Log.d(TAG, "===================================")
-        Log.d(TAG, "Loaded ${characters.size}/$totalInRegistry characters.")
-        if (skipped.isNotEmpty()) {
-            Log.d(TAG, "Skipped:")
-            skipped.forEach { (name, reason) ->
-                val displayName = if (name.contains("-")) {
-                    name.split("-").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-                } else name
-                Log.d(TAG, "- $displayName ($reason)")
+        Log.d(TAG, "Successfully loaded:")
+        if (characters.isNotEmpty()) {
+            characters.sortedBy { it.displayOrder }.forEach { c ->
+                Log.d(TAG, "  ✓ ${c.name} (${c.source})")
             }
+        } else {
+            Log.d(TAG, "  (none)")
         }
+        if (skipped.isNotEmpty()) {
+            Log.d(TAG, "Failed:")
+            skipped.forEach { (id, reason) ->
+                val displayName = id.split("-").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                Log.d(TAG, "  ✗ $displayName ($reason)")
+            }
+        } else {
+            Log.d(TAG, "Failed: <none>")
+        }
+        Log.d(TAG, "")
+        Log.d(TAG, "Final character count: ${characters.size}")
         Log.d(TAG, "===================================")
-        
+
         return characters.sortedBy { it.displayOrder }
     }
 
-    private fun validateImages(context: Context, metadata: CharacterMetadata): Boolean {
-        var allExist = true
+    /**
+     * Checks which images are missing but does NOT exclude the character.
+     * Returns a list of missing image type names (empty = all present).
+     */
+    private fun checkImages(context: Context, metadata: CharacterMetadata): List<String> {
+        val missing = mutableListOf<String>()
         val images = listOf(
             "hero" to metadata.images.hero,
             "portrait" to metadata.images.portrait,
@@ -145,10 +192,10 @@ object CharacterMetadataLoader {
             try {
                 context.assets.open(assetPath).use { it.close() }
             } catch (e: IOException) {
-                Log.e(TAG, "Missing $type image: $assetPath")
-                allExist = false
+                Log.w(TAG, "    Missing $type image: $assetPath")
+                missing.add(type)
             }
         }
-        return allExist
+        return missing
     }
 }

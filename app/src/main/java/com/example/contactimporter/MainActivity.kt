@@ -23,8 +23,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val themeConfig by viewModel.themeConfig.collectAsStateWithLifecycle()
-            val characters = viewModel.availableCharacters
+            val characters by viewModel.availableCharacters.collectAsStateWithLifecycle()
             val isDark = isSystemInDarkTheme()
             
             val activeCharacter = remember(themeConfig.characterId, characters) {
@@ -84,7 +84,7 @@ fun HomeScreen(
     themeConfig: ThemeConfig
 ) {
     val importState by viewModel.importState.collectAsStateWithLifecycle()
-    val characters = viewModel.availableCharacters
+    val characters by viewModel.availableCharacters.collectAsStateWithLifecycle()
     val loadError = viewModel.characterLoadError
     val context = LocalContext.current
     var showThemePicker by remember { mutableStateOf(false) }
@@ -185,6 +185,7 @@ fun HomeScreen(
                 InteractionHub(
                     state = importState,
                     onSelectFile = { jsonPickerLauncher.launch(arrayOf("application/json")) },
+                    onPasteJson = { viewModel.parseJsonString(it) },
                     onStartSync = {
                         permissionLauncher.launch(
                             arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
@@ -408,11 +409,17 @@ fun CharacterCarousel(
 fun InteractionHub(
     state: ImportState,
     onSelectFile: () -> Unit,
+    onPasteJson: (String) -> Unit,
     onStartSync: () -> Unit,
     onAbort: () -> Unit,
     onResolveConflict: (ConflictResolution, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var importMethod by remember { mutableStateOf(0) } // 0: File, 1: Paste
+    var pastedJson by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+
     ThemedCard(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -422,6 +429,24 @@ fun InteractionHub(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (state is ImportState.Idle) {
+                TabRow(
+                    selectedTabIndex = importMethod,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[importMethod]),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                ) {
+                    Tab(selected = importMethod == 0, onClick = { importMethod = 0 }, text = { Text("Upload File") })
+                    Tab(selected = importMethod == 1, onClick = { importMethod = 1 }, text = { Text("Paste JSON") })
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             AnimatedContent(
                 targetState = state,
                 transitionSpec = {
@@ -432,34 +457,66 @@ fun InteractionHub(
             ) { targetState ->
                 when (targetState) {
                     is ImportState.Idle -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.CloudQueue,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp).alpha(0.2f),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Database Ready",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Select a student registry JSON file to begin local synchronization.",
-                                modifier = Modifier.alpha(0.6f),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                            ThemedButton(
-                                onClick = onSelectFile,
-                                modifier = Modifier.fillMaxWidth().height(64.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.FileUpload, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(text = "SELECT JSON DATABASE", fontWeight = FontWeight.Black)
+                        if (importMethod == 0) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudQueue,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp).alpha(0.2f),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Database Ready",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Select a student registry JSON file to begin local synchronization.",
+                                    modifier = Modifier.alpha(0.6f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                ThemedButton(
+                                    onClick = onSelectFile,
+                                    modifier = Modifier.fillMaxWidth().height(64.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.FileUpload, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(text = "SELECT JSON DATABASE", fontWeight = FontWeight.Black)
+                                    }
+                                }
+                            }
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                OutlinedTextField(
+                                    value = pastedJson,
+                                    onValueChange = { pastedJson = it },
+                                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                                    placeholder = { Text("Paste your contact JSON here...") },
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val clip = clipboardManager.getText()?.text
+                                            if (clip != null) pastedJson = clip
+                                            else Toast.makeText(context, "Clipboard empty", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("PASTE")
+                                    }
+                                    ThemedButton(
+                                        onClick = { onPasteJson(pastedJson) },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = pastedJson.isNotBlank()
+                                    ) {
+                                        Text("VALIDATE")
+                                    }
                                 }
                             }
                         }
