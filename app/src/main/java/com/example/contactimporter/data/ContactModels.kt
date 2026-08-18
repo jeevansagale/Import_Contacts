@@ -4,8 +4,8 @@ package com.example.contactimporter.data
  * Domain model for a contact being imported.
  */
 data class ContactImportEntry(
-    val name: String?,
-    val number: String?
+    val name: String,
+    val number: String
 )
 
 /**
@@ -24,7 +24,8 @@ data class ContactConflict(
  */
 enum class ConflictResolution {
     OVERWRITE,
-    SKIP
+    SKIP,
+    IMPORT_ANYWAY
 }
 
 /**
@@ -40,7 +41,7 @@ data class ImportResult(
     val skipped: Int,         // Contacts skipped by user
     val failed: Int,          // Records where insertion or verification failed
     val verified: Int,        // Records confirmed to exist after operation
-    val alreadyExists: Int = 0, // Records that already existed in the provider
+    val conflicts: Int = 0,   // Number of conflicts encountered
     val failures: List<ImportFailure> = emptyList()
 )
 

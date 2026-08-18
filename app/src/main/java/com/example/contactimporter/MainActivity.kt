@@ -323,28 +323,24 @@ fun HeroSection(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(240.dp) // Increased height for premium feel
+            .height(240.dp) 
             .graphicsLayer {
-                // Subtle parallax effect based on scroll or just static depth
                 alpha = 1f
             },
         contentAlignment = Alignment.BottomCenter
     ) {
         if (heroPath != null) {
-            // Hero Image
             AsyncUriImage(
                 uriString = heroPath,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        // Soft fade at the bottom to blend into background
                         alpha = 1f
                     },
                 contentScale = ContentScale.Fit
             )
             
-            // Bottom Fade Overlay to blend hero into background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -467,7 +463,7 @@ fun InteractionHub(
     onResolveConflict: (ConflictResolution, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var importMethod by remember { mutableStateOf(0) } // 0: File, 1: Paste
+    var importMethod by remember { mutableStateOf(0) } 
     var pastedJson by remember { mutableStateOf("") }
     val context = LocalContext.current
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -596,6 +592,14 @@ fun InteractionHub(
                                 style = MaterialTheme.typography.labelMedium, 
                                 fontWeight = FontWeight.Bold
                             )
+                            if (targetState.invalidCount > 0) {
+                                Text(
+                                    text = "${targetState.invalidCount} invalid entries skipped",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                             
                             Spacer(modifier = Modifier.height(24.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -681,7 +685,7 @@ fun ConflictResolutionUI(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(12.dp)) {
-                Text(text = "Existing: ${conflict.existingName}", fontWeight = FontWeight.Bold)
+                Text(text = "Current Device: ${conflict.existingName}", fontWeight = FontWeight.Bold)
                 Text(text = conflict.existingNumber, style = MaterialTheme.typography.bodySmall, modifier = Modifier.alpha(0.6f))
             }
         }
@@ -693,7 +697,7 @@ fun ConflictResolutionUI(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(12.dp)) {
-                Text(text = "Incoming: ${conflict.incomingName}", fontWeight = FontWeight.Bold)
+                Text(text = "Imported: ${conflict.incomingName}", fontWeight = FontWeight.Bold)
                 Text(text = conflict.incomingNumber, style = MaterialTheme.typography.bodySmall, modifier = Modifier.alpha(0.6f))
             }
         }
@@ -704,24 +708,34 @@ fun ConflictResolutionUI(
             modifier = Modifier.clickable { applyToAll = !applyToAll }
         ) {
             Checkbox(checked = applyToAll, onCheckedChange = { applyToAll = it })
-            Text(text = "Apply to all remaining conflicts", style = MaterialTheme.typography.bodySmall)
+            Text(text = "Apply to All", style = MaterialTheme.typography.bodySmall)
         }
         
         Spacer(Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { onResolve(ConflictResolution.SKIP, applyToAll) },
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(text = "SKIP")
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { onResolve(ConflictResolution.SKIP, applyToAll) },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(text = "SKIP")
+                }
+                Button(
+                    onClick = { onResolve(ConflictResolution.OVERWRITE, applyToAll) },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(text = "OVERWRITE")
+                }
             }
             Button(
-                onClick = { onResolve(ConflictResolution.OVERWRITE, applyToAll) },
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp)
+                onClick = { onResolve(ConflictResolution.IMPORT_ANYWAY, applyToAll) },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
             ) {
-                Text(text = "OVERWRITE")
+                Text(text = "IMPORT ANYWAY")
             }
         }
     }
@@ -729,25 +743,73 @@ fun ConflictResolutionUI(
 
 @Composable
 fun SyncReport(result: ImportResult, onDone: () -> Unit) {
+    var showDetails by remember { mutableStateOf(false) }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = "SYNC SUCCESSFUL", 
+            text = "IMPORT SUMMARY", 
             modifier = Modifier.alpha(0.4f),
             style = MaterialTheme.typography.labelLarge, 
             fontWeight = FontWeight.Black
         )
-        Text(text = "Database Updated", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+        Text(text = "Sync Complete", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            SyncMetric("NEW", result.created.toString(), Color(0xFF4CAF50))
-            SyncMetric("UPDATED", result.updated.toString(), Color(0xFF2196F3))
-            SyncMetric("SKIPPED", result.skipped.toString(), Color(0xFFFF9800))
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                SyncMetric("IMPORTED", (result.created + result.updated).toString(), Color(0xFF4CAF50))
+                SyncMetric("SKIPPED", result.skipped.toString(), Color(0xFFFF9800))
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                SyncMetric("CONFLICTS", result.conflicts.toString(), Color(0xFF2196F3))
+                SyncMetric("INVALID", result.invalid.toString(), Color(0xFFF44336))
+            }
+        }
+
+        if (result.failures.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = { showDetails = !showDetails }) {
+                Text(if (showDetails) "HIDE DETAILS" else "VIEW DETAILS")
+                Icon(if (showDetails) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown, contentDescription = null)
+            }
+            
+            if (showDetails) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                ) {
+                    LazyColumn(modifier = Modifier.padding(8.dp)) {
+                        items(result.failures) { failure ->
+                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                Text(
+                                    text = failure.reason,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                if (failure.name != null || failure.number != null) {
+                                    val namePart = failure.name ?: "N/A"
+                                    val numberPart = failure.number ?: "N/A"
+                                    Text(
+                                        text = "$namePart | $numberPart",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.alpha(0.6f)
+                                    )
+                                }
+                                Divider(
+                                    modifier = Modifier.padding(top = 4.dp), 
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         
-        Spacer(modifier = Modifier.height(32.dp))
-        ThemedButton(onClick = onDone, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+        Spacer(modifier = Modifier.height(24.dp))
+        ThemedButton(onClick = onDone, modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Text(text = "FINISH", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         }
     }
@@ -755,13 +817,14 @@ fun SyncReport(result: ImportResult, onDone: () -> Unit) {
 
 @Composable
 fun SyncMetric(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, color = color)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(80.dp)) {
+        Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = color)
         Text(
             text = label, 
             modifier = Modifier.alpha(0.5f),
             style = MaterialTheme.typography.labelSmall, 
-            fontWeight = FontWeight.ExtraBold
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center
         )
     }
 }

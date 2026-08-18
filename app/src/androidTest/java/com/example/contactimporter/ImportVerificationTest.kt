@@ -46,20 +46,18 @@ class ImportVerificationTest {
         val inputStream = ByteArrayInputStream(jsonString.toByteArray())
         val parseResult = ContactParser.parseContacts(inputStream)
         
-        // FIX: totalParsed -> total
         assertEquals("Total records parsed should be 11", 11, parseResult.total)
         assertEquals("Valid records should be 10", 10, parseResult.validEntries.size)
         assertEquals("Failures should be 1", 1, parseResult.failures.size)
 
         // 3. Test Import Logic
-        // We simulate the import process to verify the logic since high-level helper methods were missing
         var created = 0
         var failed = 0
-        var alreadyExists = 0
+        var conflicts = 0
         
         parseResult.validEntries.forEach { entry ->
-            val name = entry.name ?: ""
-            val number = entry.number ?: ""
+            val name = entry.name
+            val number = entry.number
             
             val existing = ContactsProviderHelper.getExistingContactByNumber(context, number)
             if (existing == null) {
@@ -74,7 +72,7 @@ class ImportVerificationTest {
                     failed++
                 }
             } else {
-                alreadyExists++
+                conflicts++
             }
         }
 
@@ -88,7 +86,7 @@ class ImportVerificationTest {
             skipped = 0,
             failed = failed,
             verified = created,
-            alreadyExists = alreadyExists,
+            conflicts = conflicts,
             failures = parseResult.failures
         )
 
@@ -97,20 +95,20 @@ class ImportVerificationTest {
 
         // 4. Verify in Contacts Provider
         parseResult.validEntries.forEach { entry ->
-            val found = ContactsProviderHelper.getExistingContactByNumber(context, entry.number!!)
+            val found = ContactsProviderHelper.getExistingContactByNumber(context, entry.number)
             assertNotNull("Contact should exist after import: ${entry.name}", found)
         }
 
         // 5. Test Duplicates (Simulate second import)
-        var secondAlreadyExists = 0
+        var secondConflicts = 0
         parseResult.validEntries.forEach { entry ->
-            val existing = ContactsProviderHelper.getExistingContactByNumber(context, entry.number!!)
+            val existing = ContactsProviderHelper.getExistingContactByNumber(context, entry.number)
             if (existing != null) {
-                secondAlreadyExists++
+                secondConflicts++
             }
         }
         
-        assertEquals("On second import, valid records should be detected as already existing", 
-            10, secondAlreadyExists)
+        assertEquals("On second import, valid records should be detected as conflicts", 
+            10, secondConflicts)
     }
 }

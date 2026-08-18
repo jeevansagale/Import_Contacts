@@ -13,10 +13,20 @@ object ContactsProviderHelper {
     private const val TAG = "ContactsProviderHelper"
 
     /**
-     * Normalizes a phone number for comparison by removing all non-digit characters.
+     * Normalizes a phone number for comparison and storage.
+     * Trim whitespace, removes spaces, dashes, and parentheses.
+     * Keeps a leading '+' if present.
      */
     fun normalizePhoneNumber(number: String): String {
-        return number.replace(Regex("[^0-9]"), "")
+        val trimmed = number.trim()
+        if (trimmed.isEmpty()) return ""
+        
+        val startsWithPlus = trimmed.startsWith("+")
+        val rest = if (startsWithPlus) trimmed.substring(1) else trimmed
+        // Remove spaces, dashes, and parentheses
+        val normalizedRest = rest.replace(Regex("[ \\-()]"), "")
+        
+        return if (startsWithPlus) "+$normalizedRest" else normalizedRest
     }
 
     /**
@@ -35,6 +45,9 @@ object ContactsProviderHelper {
     suspend fun getExistingContactByNumber(context: Context, number: String): ExistingContact? = withContext(Dispatchers.IO) {
         if (number.isBlank()) return@withContext null
         
+        // We use the normalized number for lookup if possible, 
+        // but PhoneLookup generally handles various formats.
+        // However, to ensure consistency with our requirements, we compare results.
         val uri = Uri.withAppendedPath(
             ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
             Uri.encode(number)
@@ -48,12 +61,17 @@ object ContactsProviderHelper {
         
         return@withContext try {
             context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
+                val normalizedTarget = normalizePhoneNumber(number)
+                while (cursor.moveToNext()) {
                     val id = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID))
                     val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME)) ?: ""
                     val foundNumber = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.NUMBER)) ?: ""
-                    ExistingContact(id, name, foundNumber)
-                } else null
+                    
+                    if (normalizePhoneNumber(foundNumber) == normalizedTarget) {
+                        return@use ExistingContact(id, name, foundNumber)
+                    }
+                }
+                null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error querying PhoneLookup for $number", e)
@@ -95,8 +113,7 @@ object ContactsProviderHelper {
     }
 
     /**
-     * Updates an existing contact. We search for the StructuredName and Phone data rows
-     * associated with the contact ID and update them.
+     * Updates an existing contact.
      */
     suspend fun performUpdate(context: Context, contactId: Long, newName: String, newNumber: String): Boolean = withContext(Dispatchers.IO) {
         val ops = arrayListOf<ContentProviderOperation>()
@@ -120,9 +137,7 @@ object ContactsProviderHelper {
             .build())
 
         try {
-            val results = context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
-            // One or both updates might apply. If results[0].count > 0 or results[1].count > 0 it means something changed.
-            // However, a safer check is whether it succeeded without exception.
+            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error updating contact ID: $contactId", e)

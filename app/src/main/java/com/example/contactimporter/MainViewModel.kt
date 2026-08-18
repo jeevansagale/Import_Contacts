@@ -42,12 +42,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val themeRepository = ThemeRepository(application)
     val themeConfig: StateFlow<ThemeConfig> = themeRepository.themeConfig
     
-    // Metadata as StateFlow for reactive Compose UI
     val availableCharacters: StateFlow<List<CharacterMetadata>> = themeRepository.availableCharacters
     val characterLoadError: String? = themeRepository.characterLoadError
     
     init {
-        Log.d("MainViewModel", "ViewModel created. Characters: ${availableCharacters.value.size}")
         viewModelScope.launch {
             themeRepository.loadCharacters()
         }
@@ -65,6 +63,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var skippedCount = 0
     private var failedCount = 0
     private var verifiedCount = 0
+    private var conflictCount = 0
     
     private var totalRecords = 0
     private var invalidRecords = 0
@@ -72,7 +71,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private var applyToAllDecision: ConflictResolution? = null
 
-    // LOCKED: Import Pipeline Logic
     fun parseJsonFile(uri: Uri) {
         _importState.value = ImportState.Parsing
         viewModelScope.launch {
@@ -95,7 +93,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val result = withContext(Dispatchers.IO) {
                     ContactParser.parseContacts(json)
-
                 }
                 handleParseResult(result)
             } catch (e: Exception) {
@@ -125,7 +122,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // LOCKED: Import Pipeline Logic
     fun startImport(entries: List<ContactImportEntry>) {
         currentEntries = entries
         currentIndex = 0
@@ -134,12 +130,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         skippedCount = 0
         failedCount = 0
         verifiedCount = 0
+        conflictCount = 0
         applyToAllDecision = null
         
         processNext()
     }
 
-    // LOCKED: Import Pipeline Logic
     private fun processNext() {
         if (currentIndex >= currentEntries.size) {
             finishImport()
@@ -149,25 +145,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _importState.value = ImportState.Importing(currentIndex + 1, currentEntries.size)
         
         val entry = currentEntries[currentIndex]
-        val name = entry.name ?: ""
-        val number = entry.number ?: ""
-        val normalizedNumber = ContactsProviderHelper.normalizePhoneNumber(number)
+        val name = entry.name
+        val number = entry.number
 
         viewModelScope.launch {
-            // Try to find existing contact using normalized number
-            val existing = ContactsProviderHelper.getExistingContactByNumber(getApplication(), normalizedNumber)
+            val existing = ContactsProviderHelper.getExistingContactByNumber(getApplication(), number)
             
-            // Verify match after normalization
-            val isMatch = existing != null && 
-                          ContactsProviderHelper.normalizePhoneNumber(existing.number) == normalizedNumber
-
-            if (isMatch) {
+            if (existing != null) {
+                conflictCount++
                 if (applyToAllDecision != null) {
-                    handleResolution(applyToAllDecision!!, existing!!.id)
+                    handleResolution(applyToAllDecision!!, existing.id)
                 } else {
                     _importState.value = ImportState.Conflict(
                         ContactConflict(
-                            existingContactId = existing!!.id,
+                            existingContactId = existing.id,
                             existingName = existing.name,
                             existingNumber = existing.number,
                             incomingName = name,
@@ -176,24 +167,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
             } else {
-                val success = ContactsProviderHelper.performInsert(getApplication(), name, number)
-                if (success) {
-                    if (ContactsProviderHelper.verifyContact(getApplication(), name, number)) {
-                        createdCount++
-                        verifiedCount++
-                    } else {
-                        failedCount++
-                    }
-                } else {
-                    failedCount++
-                }
-                currentIndex++
-                processNext()
+                performInsert(name, number)
             }
         }
     }
 
-    // LOCKED: Import Pipeline Logic
+    private suspend fun performInsert(name: String, number: String) {
+        val success = ContactsProviderHelper.performInsert(getApplication(), name, number)
+        if (success) {
+            if (ContactsProviderHelper.verifyContact(getApplication(), name, number)) {
+                createdCount++
+                verifiedCount++
+            } else {
+                failedCount++
+            }
+        } else {
+            failedCount++
+        }
+        currentIndex++
+        processNext()
+    }
+
     fun resolveConflict(resolution: ConflictResolution, applyToAll: Boolean) {
         if (applyToAll) {
             applyToAllDecision = resolution
@@ -207,11 +201,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // LOCKED: Import Pipeline Logic
     private suspend fun handleResolution(resolution: ConflictResolution, contactId: Long) {
         val entry = currentEntries[currentIndex]
-        val name = entry.name ?: ""
-        val number = entry.number ?: ""
+        val name = entry.name
+        val number = entry.number
 
         when (resolution) {
             ConflictResolution.OVERWRITE -> {
@@ -226,14 +219,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     failedCount++
                 }
+                currentIndex++
+                processNext()
             }
             ConflictResolution.SKIP -> {
                 skippedCount++
+                currentIndex++
+                processNext()
+            }
+            ConflictResolution.IMPORT_ANYWAY -> {
+                performInsert(name, number)
             }
         }
-        
-        currentIndex++
-        processNext()
     }
 
     private fun finishImport() {
@@ -248,6 +245,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 skipped = skippedCount,
                 failed = failedCount,
                 verified = verifiedCount,
+                conflicts = conflictCount,
                 failures = parserFailures
             )
         )
@@ -259,7 +257,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         applyToAllDecision = null
     }
     
-    // Theme System Updates
     fun setThemePreset(presetId: String) {
         val current = themeConfig.value
         themeRepository.updateConfig(current.copy(characterId = presetId))
