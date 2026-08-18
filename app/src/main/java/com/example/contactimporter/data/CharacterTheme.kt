@@ -31,8 +31,8 @@ data class AssetAvailability(
 
 @Serializable
 data class Gradient(
-    val start: String,
-    val end: String
+    val start: String = "#000000",
+    val end: String = "#000000"
 )
 
 @Serializable
@@ -54,10 +54,10 @@ data class ThemePalette(
     val primary: String,
     val secondary: String,
     val accent: String,
-    val glow: String,
-    val backgroundOverlay: String,
-    val surfaceTint: String,
-    val gradient: Gradient
+    val glow: String = "#000000",
+    val backgroundOverlay: String = "#000000",
+    val surfaceTint: String = "#000000",
+    val gradient: Gradient = Gradient()
 )
 
 @Serializable

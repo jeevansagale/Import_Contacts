@@ -12,7 +12,8 @@ object CharacterMetadataLoader {
 
     private val json = Json {
         ignoreUnknownKeys = true
-        isLenient = false
+        isLenient = true
+        coerceInputValues = true
     }
 
     var lastError: String? = null
@@ -111,8 +112,8 @@ object CharacterMetadataLoader {
                 val metadata = try {
                     json.decodeFromString<CharacterMetadata>(cleanedMetadataText)
                 } catch (e: Exception) {
-                    Log.e(TAG, "  FAILED: metadata.json parse error: ${e.message}")
-                    skipped.add(charId to "Parse error")
+                    Log.e(TAG, "  FAILED: metadata.json parse error for $charId: ${e.message}")
+                    skipped.add(charId to "Parse error: ${e.message}")
                     return@forEach
                 }
 

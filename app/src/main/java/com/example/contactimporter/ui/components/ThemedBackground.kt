@@ -14,7 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.example.contactimporter.ui.AsyncUriImage
-import com.example.contactimporter.theme.LocalThemeTokens
+import com.example.contactimporter.ui.components.LocalThemeTokens
 
 /**
  * REDESIGN: First-Principles Atmospheric Background.

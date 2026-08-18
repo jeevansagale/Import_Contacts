@@ -88,7 +88,7 @@ object ThemeEngine {
             surfaceTint = surfaceTint,
             backgroundOpacity = style.backgroundOpacity,
             heroAlignment = style.heroAlignment,
-            blurStrength = style.blurStrength,
+            blurStrength = style.blur,
             themeMood = style.themeMood,
             gradientStart = gradientStart,
             gradientEnd = gradientEnd

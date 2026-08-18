@@ -143,7 +143,7 @@ fun HomeScreen(
                                 modifier = Modifier.scale(0.8f),
                                     thumbContent = {
                                         if (themeConfig.themeEnabled) {
-                                            Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.size(16.dp))
                                         }
                                     }
                             )
@@ -156,7 +156,7 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Palette,
+                                    imageVector = Icons.Filled.Edit,
                                     contentDescription = "Open Theme Picker",
                                     tint = if (themeConfig.themeEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -512,7 +512,7 @@ fun InteractionHub(
                         if (importMethod == 0) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    imageVector = Icons.Default.CloudQueue,
+                                    imageVector = Icons.Filled.Warning,
                                     contentDescription = null,
                                     modifier = Modifier.size(48.dp).alpha(0.2f),
                                     tint = MaterialTheme.colorScheme.primary
@@ -535,7 +535,7 @@ fun InteractionHub(
                                     modifier = Modifier.fillMaxWidth().height(64.dp)
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.FileUpload, contentDescription = null)
+                                        Icon(Icons.Filled.Add, contentDescription = null)
                                         Spacer(Modifier.width(8.dp))
                                         Text(text = "SELECT JSON DATABASE", fontWeight = FontWeight.Black)
                                     }
@@ -644,7 +644,7 @@ fun InteractionHub(
 
                     is ImportState.Error -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.SyncProblem, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                            Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(text = "SYNC FAILURE", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                             Text(
