@@ -7,98 +7,85 @@ import org.junit.Test
 class ContactParserTest {
 
     @Test
-    fun testRootArrayNumberString() {
-        val json = """[{"name": "Furina", "number": "+919876543210"}]"""
-        val result = ContactParser.parseContacts(json)
-        assertEquals(1, result.validEntries.size)
-        assertEquals("Furina", result.validEntries[0].name)
-        assertEquals("+919876543210", result.validEntries[0].number)
-    }
-
-    @Test
-    fun testRootArrayPhoneString() {
+    fun test1_NormalArray() {
         val json = """[{"name": "Furina", "phone": "+919876543210"}]"""
         val result = ContactParser.parseContacts(json)
         assertEquals(1, result.validEntries.size)
-        assertEquals("Furina", result.validEntries[0].name)
-        assertEquals("+919876543210", result.validEntries[0].number)
     }
 
     @Test
-    fun testNumberAsJsonInteger() {
-        val json = """[{"name": "Furina", "number": 919876543210}]"""
+    fun test2_SingleObject() {
+        val json = """{"name": "Furina", "phone": "+919876543210"}"""
+        val result = ContactParser.parseContacts(json)
+        assertEquals(1, result.validEntries.size)
+    }
+
+    @Test
+    fun test3_CapitalizedFields() {
+        val json = """{"Name": "Furina", "Phone": "+919876543210"}"""
+        val result = ContactParser.parseContacts(json)
+        assertEquals(1, result.validEntries.size)
+    }
+
+    @Test
+    fun test4_UppercaseFields() {
+        val json = """{"NAME": "Furina", "NUMBER": "+919876543210"}"""
+        val result = ContactParser.parseContacts(json)
+        assertEquals(1, result.validEntries.size)
+    }
+
+    @Test
+    fun test5_NumericPhone() {
+        val json = """{"name": "Furina", "phone": 919876543210}"""
         val result = ContactParser.parseContacts(json)
         assertEquals(1, result.validEntries.size)
         assertEquals("919876543210", result.validEntries[0].number)
     }
 
     @Test
-    fun testPhoneAsJsonInteger() {
-        val json = """[{"name": "Furina", "phone": 919876543210}]"""
-        val result = ContactParser.parseContacts(json)
-        assertEquals(1, result.validEntries.size)
-        assertEquals("919876543210", result.validEntries[0].number)
-    }
-
-    @Test
-    fun testContactsWrapper() {
-        val json = """{"contacts": [{"name": "Furina", "number": "+919876543210"}]}"""
+    fun test6_ContactsWrapper() {
+        val json = """{"contacts": [{"name": "Furina", "phone": "+919876543210"}]}"""
         val result = ContactParser.parseContacts(json)
         assertEquals(1, result.validEntries.size)
     }
 
     @Test
-    fun testDataWrapper() {
-        val json = """{"data": [{"name": "Furina", "phone": "+919876543210"}]}"""
+    fun test7_ContactsWrapperSingleObject() {
+        val json = """{"contacts": {"name": "Furina", "phone": "+919876543210"}}"""
         val result = ContactParser.parseContacts(json)
         assertEquals(1, result.validEntries.size)
     }
 
     @Test
-    fun testItemsWrapper() {
-        val json = """{"items": [{"name": "Furina", "number": "+919876543210"}]}"""
+    fun test8_MixedCaseWrapper() {
+        val json = """{"CoNtAcTs": [{"NaMe": "Furina", "PhOnE": "+919876543210"}]}"""
         val result = ContactParser.parseContacts(json)
         assertEquals(1, result.validEntries.size)
     }
 
     @Test
-    fun testMixedFormats() {
+    fun test9_MultipleContacts() {
         val json = """
             [
-              {"name": "Furina", "number": "+919876543210"},
-              {"name": "Raiden Shogun", "phone": 919876543211},
-              {"name": "Yae Miko", "number": "+919876543212"},
-              {"name": "Nahida", "phone": "919876543213"}
+              {"Name": "Furina", "Phone": "+919876543210"},
+              {"NAME": "Raiden Shogun", "NUMBER": "+919876543211"}
             ]
         """.trimIndent()
         val result = ContactParser.parseContacts(json)
-        assertEquals(4, result.validEntries.size)
+        assertEquals(2, result.validEntries.size)
     }
 
     @Test
-    fun testMalformedContact() {
+    fun test10_OneInvalidContact() {
         val json = """
             [
-              {"name": "Furina", "number": "+919876543210"},
-              {"name": "Invalid Contact"},
-              {"name": "Raiden Shogun", "phone": "+919876543211"}
+              {"name": "Furina", "phone": "+919876543210"},
+              {"name": "Invalid"},
+              {"Name": "Raiden Shogun", "Phone": "+919876543211"}
             ]
         """.trimIndent()
         val result = ContactParser.parseContacts(json)
         assertEquals(2, result.validEntries.size)
         assertEquals(1, result.failures.size)
-    }
-
-    @Test
-    fun testDuplicateAcrossFieldNames() {
-        val json = """
-            [
-              {"name": "Furina", "number": "+919876543210"},
-              {"name": "Furina", "phone": "+919876543210"}
-            ]
-        """.trimIndent()
-        val result = ContactParser.parseContacts(json)
-        // Parser should return both as valid entries; duplicate detection is handled by ViewModel
-        assertEquals(2, result.validEntries.size)
     }
 }

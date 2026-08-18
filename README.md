@@ -9,8 +9,8 @@ Import contacts from JSON files or pasted JSON directly into your Android Contac
 ## Features
 
 * **JSON Import** — File picker or paste JSON directly.
-* **Flexible Formats** — Supports root arrays and `contacts`, `data`, and `items` wrappers.
-* **Flexible Fields** — Accepts both `number` and `phone`.
+* **Flexible Formats** — Supports root arrays, single objects, and `contacts`, `data`, and `items` wrappers (case-insensitive).
+* **Flexible Fields** — Accepts both `number` and `phone` (case-insensitive).
 * **Flexible Types** — Phone values can be JSON strings or numbers.
 * **Duplicate Detection** — Detects duplicates using normalized phone numbers.
 * **Fault-Tolerant Parsing** — Invalid records don't stop valid contacts from importing.

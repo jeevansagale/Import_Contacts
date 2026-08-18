@@ -3,8 +3,6 @@ package com.example.contactimporter.data
 import android.util.Log
 import kotlinx.serialization.json.*
 import java.io.InputStream
-import java.io.InputStreamReader
-import kotlin.text.Charsets
 
 object ContactParser {
     private const val TAG = "ContactParser"
@@ -46,13 +44,12 @@ object ContactParser {
     private fun parseContacts(root: JsonElement): ParseResult {
         val validEntries = mutableListOf<ContactImportEntry>()
         val failures = mutableListOf<ImportFailure>()
-        var totalCount: Int
 
         // Extract contacts array from various root structures
         val jsonArray = extractContactsArray(root)
-            ?: return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Unsupported JSON structure: expected array or object with 'contacts', 'data', or 'items' key")))
+            ?: return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Unsupported JSON structure")))
 
-        totalCount = jsonArray.size
+        val totalCount = jsonArray.size
 
         for ((index, element) in jsonArray.withIndex()) {
             if (element !is JsonObject) {
@@ -60,16 +57,12 @@ object ContactParser {
                 continue
             }
 
-            // Extract NAME (case-insensitive support)
-            val name = element["NAME"]?.jsonPrimitive?.contentOrNull
-                ?: element["name"]?.jsonPrimitive?.contentOrNull
-                ?: element["Name"]?.jsonPrimitive?.contentOrNull
-                ?: element["displayName"]?.jsonPrimitive?.contentOrNull
-
-            // Extract NUMBER - support both "number" and "phone" fields
-            // Priority: number > phone
-            val numberElement = element["NUMBER"] ?: element["number"] ?: element["Number"]
-                ?: element["PHONE"] ?: element["phone"] ?: element["Phone"]
+            // Case-insensitive field lookup
+            val name = getFieldIgnoreCase(element, "name")?.jsonPrimitive?.contentOrNull
+            
+            // Priority: number > phone (case-insensitive)
+            val numberElement = getFieldIgnoreCase(element, "number") 
+                ?: getFieldIgnoreCase(element, "phone")
             
             val number = when (numberElement) {
                 null -> null
@@ -101,24 +94,26 @@ object ContactParser {
         )
     }
 
+    private fun getFieldIgnoreCase(jsonObject: JsonObject, key: String): JsonElement? {
+        return jsonObject.entries.find { it.key.equals(key, ignoreCase = true) }?.value
+    }
+
     /**
      * Extracts the contacts array from various supported JSON root structures.
-     * Supported formats:
-     * - Root array: [ {...}, {...} ]
-     * - Object with "contacts" key: { "contacts": [...] }
-     * - Object with "data" key: { "data": [...] }
-     * - Object with "items" key: { "items": [...] }
      */
     private fun extractContactsArray(root: JsonElement): JsonArray? {
         return when (root) {
             is JsonArray -> root
             is JsonObject -> {
-                // Check for supported wrapper keys in order of preference
+                // Check for supported wrapper keys (case-insensitive)
                 val wrapperKeys = listOf("contacts", "data", "items")
                 for (key in wrapperKeys) {
-                    val element = root[key]
+                    val element = getFieldIgnoreCase(root, key)
                     if (element is JsonArray) {
                         return element
+                    }
+                    if (element is JsonObject) {
+                        return JsonArray(listOf(element))
                     }
                 }
                 // If object has no recognized wrapper, treat as single contact
