@@ -88,4 +88,29 @@ class ContactParserTest {
         assertEquals(2, result.validEntries.size)
         assertEquals(1, result.failures.size)
     }
+    @Test
+    fun rejectsNonPrimitiveNamesWithoutThrowing() {
+        val result = ContactParser.parseContacts("""[{"name":{"value":"Furina"},"phone":"919876543210"}]""")
+        assertEquals(0, result.validEntries.size)
+        assertEquals(1, result.failures.size)
+    }
+
+    @Test
+    fun rejectsBooleanDecimalAndExponentPhoneNumbers() {
+        val json = """[
+            {"name":"Boolean","phone":true},
+            {"name":"Decimal","phone":9198765432.5},
+            {"name":"Exponent","phone":9.1987654321e9}
+        ]"""
+        val result = ContactParser.parseContacts(json)
+        assertEquals(0, result.validEntries.size)
+        assertEquals(3, result.failures.size)
+    }
+
+    @Test
+    fun rejectsPhoneNumbersWithMoreThanFifteenDigits() {
+        val result = ContactParser.parseContacts("""{"name":"Long","phone":"1234567890123456"}""")
+        assertEquals(0, result.validEntries.size)
+        assertEquals(1, result.failures.size)
+    }
 }
