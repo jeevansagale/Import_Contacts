@@ -1,367 +1,174 @@
-# CONTACT IMPORTER
+# Import Contacts
 
 <p align="center">
-  <strong>A modern, lightweight Android application for importing contacts from JSON with speed, reliability, and a polished Material 3 experience.</strong>
+  <strong>An Android utility for importing contacts from JSON files or pasted JSON data.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android"/>
-  <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin"/>
-  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=flat-square" alt="Jetpack Compose" />
 </p>
 
 ---
 
 ## Overview
 
-**CONTACT IMPORTER** is an Android application that imports contacts directly into the device's Contacts Provider from JSON files or pasted JSON text.
+Import Contacts reads contact records from a JSON file or pasted JSON text, validates the records, checks for existing phone numbers, and writes accepted contacts to the Android Contacts Provider.
 
-The application is designed around three core principles:
+The application is designed to handle imperfect input without abandoning the entire import when an individual record is invalid. Parsing and contact-provider operations are separated from the Compose UI.
 
-* **Fast** — Handles thousands of contacts efficiently.
-* **Reliable** — Fault-tolerant parsing with duplicate detection.
-* **Beautiful** — A customizable Material 3 interface with optional character themes.
+## Screenshots
 
-Unlike many contact importers, all processing happens **locally on the device**. No accounts, cloud storage, analytics, or external servers are required for importing contacts.
+<p align="center">
+  <img src="Data/Images_readme/image1.jpeg" width="23%" alt="Home screen" />
+  <img src="Data/Images_readme/image2.jpeg" width="23%" alt="Import screen" />
+  <img src="Data/Images_readme/image3.jpeg" width="23%" alt="Theme selection" />
+  <img src="Data/Images_readme/image4.jpeg" width="23%" alt="Import result" />
+</p>
 
----
+## Features
 
-# Features
+- Import contacts from a JSON file using Android's document picker.
+- Paste JSON directly into the application.
+- Accept a root JSON array, a single contact object, or an object containing a `contacts`, `data`, or `items` array.
+- Match `name`, `number`, and `phone` fields without case sensitivity.
+- Validate names and phone numbers individually.
+- Normalize common phone-number formatting characters before comparison.
+- Detect existing contacts through Android's PhoneLookup provider.
+- Insert and update contacts using batched `ContentProviderOperation` calls.
+- Display import results and validation failures.
+- Provide selectable character-based themes.
 
-### JSON Import
+## Supported JSON
 
-* Import from `.json` files
-* Paste JSON directly into the app
-* Automatic format detection
-* Supports large contact lists
-
----
-
-### Flexible JSON Support
-
-Supports:
-
-* Root arrays
-* Single JSON objects
-* Wrapped objects
-
-```json
-{
-  "contacts": [...]
-}
-```
-
-```json
-{
-  "data": [...]
-}
-```
-
-```json
-{
-  "items": [...]
-}
-```
-
-Wrapper names are **case-insensitive**.
-
----
-
-### Flexible Contact Fields
-
-Accepted name fields
-
-* `name`
-
-Accepted phone fields
-
-* `number`
-* `phone`
-
-Case-insensitive.
-
-Example:
-
-```json
-{
-  "Name": "Furina",
-  "PHONE": "+919876543210"
-}
-```
-
----
-
-### Multiple Value Types
-
-Phone numbers may be:
-
-```json
-"number": "+919876543210"
-```
-
-or
-
-```json
-"number": 9876543210
-```
-
-Numbers are internally converted to **String** to preserve formatting whenever possible.
-
----
-
-### Intelligent Validation
-
-Every contact is validated individually.
-
-If one contact is invalid:
-
-* It is skipped
-* Remaining contacts continue importing
-
-The entire import never fails because of a single malformed record.
-
----
-
-### Duplicate Detection
-
-Duplicates are detected using normalized phone numbers.
-
-Normalization removes formatting differences such as:
-
-```
-+91 98765 43210
-```
-
-```
-98765-43210
-```
-
-```
-9876543210
-```
-
-All resolve to the same normalized value.
-
-Duplicate handling includes:
-
-* Existing device contacts
-* Duplicate entries inside the JSON file
-* Conflict resolution before importing
-
----
-
-### High Performance Batch Import
-
-Designed to import large contact lists without freezing the UI.
-
-Optimizations include:
-
-* Background coroutines
-* Batch `ContentProviderOperation`
-* Efficient JSON parsing
-* Memory-conscious processing
-* Smooth progress updates
-
----
-
-### Character Theme Engine
-
-The UI supports customizable character themes while keeping the import engine completely independent.
-
-Features include:
-
-* Theme switching
-* Dynamic color palettes
-* Character artwork
-* Lightweight asset loading
-* Easy theme expansion through assets
-
-Changing themes never affects importing functionality.
-
----
-
-# Supported JSON Example
+A root array:
 
 ```json
 [
   {
-    "name": "Furina",
-    "number": "+919876543210"
+    "name": "Ada Lovelace",
+    "number": "+441234567890"
   },
   {
-    "name": "Raiden Shogun",
-    "phone": "+919876543211"
+    "Name": "Alan Turing",
+    "PHONE": "+441234567891"
   }
 ]
 ```
 
----
+A wrapped array:
 
-# Import Pipeline
+```json
+{
+  "contacts": [
+    {
+      "name": "Ada Lovelace",
+      "phone": "+441234567890"
+    }
+  ]
+}
+```
+
+The parser also accepts `data` and `items` as wrapper keys. Field and wrapper matching is case-insensitive.
+
+## Import Pipeline
 
 ```text
-JSON File / Paste
-        │
-        ▼
- Format Detection
-        │
-        ▼
- Parsing
-        │
-        ▼
- Validation
-        │
-        ▼
- Duplicate Detection
-        │
-        ▼
- Conflict Resolution
-        │
-        ▼
- Batch Import
-        │
-        ▼
+JSON File / Pasted Text
+          |
+          v
+      JSON Parsing
+          |
+          v
+  Field and Type Validation
+          |
+          v
+ Phone Number Normalization
+          |
+          v
+ Existing Contact Lookup
+          |
+          v
+ Insert / Update Operations
+          |
+          v
  Android Contacts Provider
 ```
 
----
+Invalid records are reported individually; valid records remain available for import.
 
-# Screenshots
+## Tech Stack
 
-| Home                                | Import                              |
-| ----------------------------------- | ----------------------------------- |
-| ![](Data/Images_readme/image1.jpeg) | ![](Data/Images_readme/image2.jpeg) |
+| Component | Technology |
+|---|---|
+| Language | Kotlin |
+| UI | Jetpack Compose, Material 3 |
+| JSON | kotlinx.serialization |
+| Contact access | Android Contacts Provider |
+| File input | Storage Access Framework |
+| Background work | Kotlin coroutines |
+| Build | Gradle, Android Gradle Plugin |
 
-| Theme Selection                     | Import Complete                     |
-| ----------------------------------- | ----------------------------------- |
-| ![](Data/Images_readme/image3.jpeg) | ![](Data/Images_readme/image4.jpeg) |
+## Requirements
 
----
+- Android Studio with Android SDK 36.
+- JDK compatible with the Gradle wrapper.
+- Android device or emulator running Android 10 (API 29) or later.
+- Contacts permission when importing or updating device contacts.
 
-# Performance Goals
+The app module currently declares `minSdk 29`, `compileSdk 36`, and `targetSdk 36`.
 
-| Metric         | Target                          |
-| -------------- | ------------------------------- |
-| APK Size       | 25–35 MB                        |
-| Maximum APK    | < 60 MB                         |
-| Target Devices | Android devices with 2–4 GB RAM |
-| UI Performance | 60 FPS                          |
-| Large Imports  | No ANR / No UI Freeze           |
+## Build
 
-Performance optimizations include:
+```bash
+git clone https://github.com/jeevansagale/Import_Contacts.git
+cd Import_Contacts
 
-* Lazy loading
-* Resource shrinking
-* R8 optimization
-* Minimal dependencies
-* Efficient memory usage
-* Background processing
-* Fast startup
-* Batched contact writes
+# Run unit tests
+./gradlew testDebugUnitTest
 
----
-
-# Tech Stack
-
-* Kotlin
-* Jetpack Compose
-* Material 3
-* Kotlin Coroutines
-* kotlinx.serialization
-* Android Contacts Provider
-* Storage Access Framework (SAF)
-
-No backend services are required for the core functionality.
-
----
-
-# Project Structure
-
-```text
-app/
-└── src/main/
-    ├── java/
-    │   └── com/example/contactimporter/
-    │       ├── contacts/
-    │       ├── data/
-    │       ├── importer/
-    │       ├── theme/
-    │       └── ui/
-    │
-    ├── assets/
-    │   └── characters/
-    │
-    └── res/
+# Build a debug APK
+./gradlew assembleDebug
 ```
 
----
+The debug APK is generated under `app/build/outputs/apk/debug/`.
 
-# Why CONTACT IMPORTER?
+## Tests
 
-* Lightweight architecture
-* Offline-first
-* Robust JSON parsing
-* Flexible import formats
-* Duplicate detection
-* Smooth Material 3 interface
-* Extensible character theme engine
-* Built with performance in mind
+The repository includes unit tests for JSON parsing and character-theme behavior, plus instrumentation tests for import verification.
 
----
+```bash
+./gradlew testDebugUnitTest
+./gradlew connectedDebugAndroidTest
+```
 
-# Legal Notice
+The instrumentation command requires a connected Android device or emulator.
 
-## Third-Party Character Artwork
+## Permissions and Privacy
 
-This project may include artwork, images, names, logos, or other intellectual property associated with third-party games, anime, or entertainment franchises.
+The application requests `READ_CONTACTS` and `WRITE_CONTACTS` to look up existing contacts and create or update records. Review the permission prompt before granting access.
 
-These assets:
+The import flow is implemented using on-device Android APIs; this README does not make a claim about every third-party library or optional feature beyond the inspected import path.
 
-* are **not owned** by the author of this repository;
-* remain the property of their respective copyright and trademark holders;
-* are included solely for **demonstration, educational, personal, and non-commercial showcase purposes** within this open-source project;
-* are **not** intended to imply ownership, endorsement, sponsorship, or affiliation with the respective rights holders.
+## Repository Structure
 
-If you are a copyright owner and believe any content in this repository should not be displayed, please open an issue or contact the repository owner. The relevant content will be reviewed and removed if appropriate.
+```text
+app/src/main/java/com/example/contactimporter/
+├── data/       # JSON parsing, contact models, provider operations
+├── theme/      # Theme engine and presets
+├── ui/         # Compose UI and components
+└── MainActivity.kt
 
-**Do not redistribute, reuse, or commercialize any third-party artwork included in this repository unless you have permission from the original copyright holder.**
+Data/
+├── Images_readme/  # README screenshots
+└── characters/     # Theme artwork
+```
 
----
+## Third-Party Artwork
 
-# License
+The repository contains character artwork associated with third-party entertainment properties. These assets remain subject to their respective owners' rights and license terms. Their presence does not imply endorsement or grant permission for reuse.
 
-This project's source code is licensed under the **MIT License**.
+## License
 
-Third-party artwork, logos, and character images are **not covered** by the MIT License and remain the property of their respective owners.
-
----
-
-# Future Improvements
-
-* CSV import support
-* vCard (.vcf) import
-* Search before import
-* Undo recent imports
-* Advanced duplicate merging
-* Import statistics dashboard
-* Material You dynamic theming
-* Additional customizable themes
-
----
-
-# Contributing
-
-Contributions are welcome.
-
-If you discover a bug, have an improvement, or would like to add new functionality, feel free to open an issue or submit a pull request.
-
----
-
-<p align="center">
-
-**Fast enough for low-end devices.**
-**Flexible enough for real-world JSON.**
-**Polished enough to feel like a finished Android application.**
-
-</p>
+No license file is currently included. Unless a license is added, the repository should be treated as source available for viewing, not as granting general permission to reuse or redistribute the code.
