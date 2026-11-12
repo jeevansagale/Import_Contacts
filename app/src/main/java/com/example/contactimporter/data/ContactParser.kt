@@ -34,8 +34,8 @@ object ContactParser {
         val root = try {
             json.parseToJsonElement(text)
         } catch (e: Exception) {
-            Log.e(TAG, "Invalid JSON structure", e)
-            return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Invalid JSON format: ${e.message}")))
+            Log.w(TAG, "Invalid JSON input")
+            return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Invalid JSON format")))
         }
 
         return parseContacts(root)
@@ -63,9 +63,13 @@ object ContactParser {
             val trimmedName = rawName?.trim()
 
             if (trimmedName.isNullOrEmpty()) {
-                val reason = if (rawName == null) "Missing name" else "Name is empty or only whitespace"
-                logFailure(contactIndex, rawName, null, reason)
-                failures.add(ImportFailure(trimmedName, null, "Contact #$contactIndex: $reason"))
+                val reason = when {
+                    nameElement == null -> "Missing name"
+                    nameElement !is JsonPrimitive || !nameElement.isString -> "Name must be a string"
+                    else -> "Name is empty or only whitespace"
+                }
+                logFailure(contactIndex, null, null, reason)
+                failures.add(ImportFailure(null, null, "Contact #$contactIndex: $reason"))
                 continue
             }
 
