@@ -18,7 +18,7 @@ object ContactParser {
         val json = Json { ignoreUnknownKeys = true; isLenient = true }
         val root = try {
             json.decodeFromStream<JsonElement>(inputStream)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Log.w(TAG, "Invalid JSON input")
             return ParseResult(0, 0, emptyList(), listOf(ImportFailure(null, null, "Invalid JSON format")))
         }
@@ -68,7 +68,7 @@ object ContactParser {
                     nameElement !is JsonPrimitive || !nameElement.isString -> "Name must be a string"
                     else -> "Name is empty or only whitespace"
                 }
-                logFailure(contactIndex, null, null, reason)
+                logFailure(contactIndex, reason)
                 failures.add(ImportFailure(null, null, "Contact #$contactIndex: $reason"))
                 continue
             }
@@ -77,7 +77,7 @@ object ContactParser {
             val numberElement = getFieldIgnoreCase(element, "number") ?: getFieldIgnoreCase(element, "phone")
             
             if (numberElement == null || numberElement is JsonNull) {
-                logFailure(contactIndex, trimmedName, null, "Missing phone number")
+                logFailure(contactIndex, "Missing phone number")
                 failures.add(ImportFailure(trimmedName, null, "Contact #$contactIndex: Missing phone number"))
                 continue
             }
@@ -88,7 +88,7 @@ object ContactParser {
                     is JsonArray -> "Array"
                     else -> "Unknown"
                 }
-                logFailure(contactIndex, trimmedName, numberElement.toString(), "Unsupported JSON type ($type)")
+                logFailure(contactIndex, "Unsupported JSON type ($type)")
                 failures.add(ImportFailure(trimmedName, numberElement.toString(), "Contact #$contactIndex: Unsupported JSON type ($type)"))
                 continue
             }
@@ -97,7 +97,7 @@ object ContactParser {
             // decimals, booleans and negative JSON numbers are ambiguous phone inputs.
             val rawNumber = numberElement.content
             if (!numberElement.isString && !rawNumber.matches(Regex("[0-9]+"))) {
-                logFailure(contactIndex, trimmedName, null, "Unsupported phone number type")
+                logFailure(contactIndex, "Unsupported phone number type")
                 failures.add(ImportFailure(trimmedName, null, "Contact #$contactIndex: Unsupported phone number type"))
                 continue
             }
@@ -108,7 +108,7 @@ object ContactParser {
             // 4. Validate Normalized Number
             val validationError = validateNormalizedNumber(normalizedNumber)
             if (validationError != null) {
-                logFailure(contactIndex, trimmedName, rawNumber, validationError)
+                logFailure(contactIndex, validationError)
                 failures.add(ImportFailure(trimmedName, rawNumber, "Contact #$contactIndex: $validationError"))
                 continue
             }
@@ -141,7 +141,7 @@ object ContactParser {
         return null
     }
 
-    private fun logFailure(index: Int, name: String?, rawNumber: String?, reason: String) {
+    private fun logFailure(index: Int, reason: String) {
         // Never write contact names or phone numbers to Logcat.
         Log.w(TAG, "Skipped contact #$index: $reason")
     }
