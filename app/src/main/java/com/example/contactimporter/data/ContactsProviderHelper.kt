@@ -74,7 +74,7 @@ object ContactsProviderHelper {
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error querying PhoneLookup for $number", e)
+            Log.e(TAG, "PhoneLookup query failed", e)
             null
         }
     }
@@ -107,7 +107,7 @@ object ContactsProviderHelper {
             val results = context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
             results.size >= 3 && results[0].uri != null
         } catch (e: Exception) {
-            Log.e(TAG, "Error inserting contact: $name", e)
+            Log.e(TAG, "Contact insert failed", e)
             false
         }
     }
@@ -116,35 +116,72 @@ object ContactsProviderHelper {
      * Updates an existing contact.
      */
     suspend fun performUpdate(context: Context, contactId: Long, newName: String, newNumber: String): Boolean = withContext(Dispatchers.IO) {
-        val ops = arrayListOf<ContentProviderOperation>()
+        if (contactId <= 0L || newName.isBlank() || newNumber.isBlank()) return@withContext false
 
-        // Update Name
-        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
-            .withSelection(
-                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
-                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-            )
-            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, newName)
-            .build())
+        // Resolve the exact phone data row first. A contact may contain multiple
+        // phone numbers; updating every Phone row would overwrite unrelated numbers.
+        val projection = arrayOf(
+            ContactsContract.Data._ID,
+            ContactsContract.Data.RAW_CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.NUMBER
+        )
+        val selection = "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?" 
+        val selectionArgs = arrayOf(
+            contactId.toString(),
+            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE
+        )
 
-        // Update Phone
-        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
-            .withSelection(
-                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
-                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-            )
-            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, newNumber)
-            .build())
+        var phoneDataId: Long? = null
+        var rawContactId: Long? = null
+        try {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI, projection, selection, selectionArgs, null
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(ContactsContract.Data._ID)
+                val rawIdColumn = cursor.getColumnIndexOrThrow(ContactsContract.Data.RAW_CONTACT_ID)
+                val numberColumn = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val target = normalizePhoneNumber(newNumber)
+                while (cursor.moveToNext()) {
+                    val currentNumber = cursor.getString(numberColumn).orEmpty()
+                    if (normalizePhoneNumber(currentNumber) == target) {
+                        phoneDataId = cursor.getLong(idColumn)
+                        rawContactId = cursor.getLong(rawIdColumn)
+                        break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Contact update lookup failed", e)
+            return@withContext false
+        }
+
+        val dataId = phoneDataId ?: return@withContext false
+        val rawId = rawContactId ?: return@withContext false
+        val ops = arrayListOf(
+            ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                .withSelection(
+                    "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                    arrayOf(rawId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                )
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, newName)
+                .build(),
+            ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                .withSelection(
+                    "${ContactsContract.Data._ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                    arrayOf(dataId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                )
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, newNumber)
+                .build()
+        )
 
         try {
             context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error updating contact ID: $contactId", e)
+            Log.e(TAG, "Contact update failed", e)
             false
         }
     }
-
     /**
      * Verification check after operation.
      */
